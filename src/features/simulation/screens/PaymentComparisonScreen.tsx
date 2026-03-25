@@ -32,13 +32,13 @@ export default function PaymentComparisonScreen() {
     const totalLoanCost = displayMonthly * displayDuration;
     
     // Recovery Calc logic
-    const disposableIncome = Math.abs(calc.baseline_disposable_income || 0);
-    const fullRecovery = comparisons.pay_in_full?.recovery_months || Math.ceil(displayAmount / (disposableIncome * 0.5 || 1));
-    const financingRecovery = comparisons.financing?.recovery_months || displayDuration; // For financing, recovery is usually the loan term
+    const disposableIncome = Math.abs(calc?.baseline_disposable_income || 0);
+    const fullRecovery = calc?.comparisons?.pay_in_full?.recovery_months || Math.ceil(displayAmount / (disposableIncome * 0.5 || 1));
+    const financingRecovery = calc?.monthly_payment ? (calc?.recovery_months || displayDuration) : 0; 
 
     // Risk levels from AI (with fallbacks)
-    const payInFullRisk = comparisons.pay_in_full?.risk_level || (displayAmount > 1000 ? 'Tight' : 'Safe');
-    const financingRisk = comparisons.financing?.risk_level || 'Safe';
+    const payInFullRisk = calc?.comparisons?.pay_in_full?.risk_level || (displayAmount > 1000 ? 'Tight' : 'Safe');
+    const financingRisk = calc?.comparisons?.financing?.risk_level || 'Safe';
 
     return (
         <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -63,19 +63,29 @@ export default function PaymentComparisonScreen() {
                     {/* Pay in Full Card */}
                     <View style={styles.summaryCard}>
                         <ThemedText style={styles.cardTitle}>Pay in Full</ThemedText>
-                        <View style={[styles.badge, styles.badgeTight]}>
-                            <Ionicons name="alert-circle-outline" size={12} color={palette.status.warning} style={{ marginRight: 4 }} />
-                            <Text style={styles.badgeTextTight}>{payInFullRisk}</Text>
+                        <View style={[styles.badge, payInFullRisk.toUpperCase() === 'SAFE' ? styles.badgeSafe : styles.badgeTight]}>
+                            <Ionicons 
+                                name={payInFullRisk.toUpperCase() === 'SAFE' ? "checkmark-circle-outline" : "alert-circle-outline"} 
+                                size={12} 
+                                color={payInFullRisk.toUpperCase() === 'SAFE' ? palette.status.success : palette.status.warning} 
+                                style={{ marginRight: 4 }} 
+                            />
+                            <Text style={payInFullRisk.toUpperCase() === 'SAFE' ? styles.badgeTextSafe : styles.badgeTextTight}>{payInFullRisk}</Text>
                         </View>
                         <ThemedText style={styles.cardSubtitle}>Immediate impact</ThemedText>
                     </View>
-
+ 
                     {/* Loan Card */}
                     <View style={styles.summaryCard}>
                         <ThemedText style={styles.cardTitle}>{displayDuration}-Month Loan</ThemedText>
-                        <View style={[styles.badge, styles.badgeSafe]}>
-                            <Ionicons name="checkmark-circle-outline" size={12} color={palette.status.success} style={{ marginRight: 4 }} />
-                            <Text style={styles.badgeTextSafe}>{financingRisk}</Text>
+                        <View style={[styles.badge, financingRisk.toUpperCase() === 'SAFE' ? styles.badgeSafe : styles.badgeTight]}>
+                            <Ionicons 
+                                name={financingRisk.toUpperCase() === 'SAFE' ? "checkmark-circle-outline" : "alert-circle-outline"} 
+                                size={12} 
+                                color={financingRisk.toUpperCase() === 'SAFE' ? palette.status.success : palette.status.warning} 
+                                style={{ marginRight: 4 }} 
+                            />
+                            <Text style={financingRisk.toUpperCase() === 'SAFE' ? styles.badgeTextSafe : styles.badgeTextTight}>{financingRisk}</Text>
                         </View>
                         <ThemedText style={styles.cardSubtitle}>Monthly payments</ThemedText>
                     </View>
@@ -114,7 +124,7 @@ export default function PaymentComparisonScreen() {
                     <ComparisonRow
                         label="Monthly Payment"
                         val1="$0"
-                        val2={`$${displayMonthly.toFixed(0)}`}
+                        val2={`$${(calc?.monthly_payment || displayMonthly || 0).toLocaleString()}`}
                         highlight1={true}
                         val1Color={palette.status.success}
                         val2Color={palette.neutral.gray900}

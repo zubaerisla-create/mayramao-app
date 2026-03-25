@@ -1,16 +1,28 @@
 import { FontAwesome5, Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/src/components';
 import { palette, radius, spacing, typography } from '@/src/design-system';
+import { useAppDispatch, useAppSelector } from '@/src/store/hooks';
+import { fetchSubscriptions, setSelectedPlan } from '../subscriptionSlice';
 
 export default function SubscriptionScreen() {
     const router = useRouter();
+    const dispatch = useAppDispatch();
+    const { profile } = useAppSelector(state => state.profile);
+    const { subscriptions, loading } = useAppSelector(state => state.subscription);
+
+    React.useEffect(() => {
+        dispatch(fetchSubscriptions());
+    }, [dispatch]);
+
+    const userSub = profile?.subscription;
+    const isPremium = userSub?.isActive && userSub?.planName?.toLowerCase().includes('premium');
 
     return (
         <View style={styles.container}>
@@ -43,59 +55,84 @@ export default function SubscriptionScreen() {
                         </View>
                     </Animated.View>
 
-                    {/* Free Plan Card */}
-                    <Animated.View entering={FadeInDown.delay(200).duration(500).springify()} style={styles.planCard}>
-                        <View style={styles.planHeader}>
-                            <ThemedText style={styles.planName}>Free</ThemedText>
-                            <View style={styles.priceRow}>
-                                <ThemedText style={styles.price}>$0</ThemedText>
-                                <ThemedText style={styles.perMonth}>/month</ThemedText>
-                            </View>
-                            <View style={styles.currentPlanBadge}>
-                                <ThemedText style={styles.currentPlanText}>Current Plan</ThemedText>
-                            </View>
-                        </View>
-                        <View style={styles.featuresList}>
-                            <FeatureItem text="Up to 5 simulations per month" />
-                            <FeatureItem text="Basic financial impact analysis" />
-                            <FeatureItem text="Safe/Tight/Risky indicators" />
-                            <FeatureItem text="Payment comparison" />
-                        </View>
-                    </Animated.View>
+                    {loading && (
+                        <ActivityIndicator color={palette.brand.primary} style={{ marginVertical: 20 }} />
+                    )}
 
-                    {/* Premium Plan Card */}
-                    <Animated.View entering={FadeInDown.delay(300).duration(500).springify()} style={[styles.planCard, styles.premiumCard]}>
-                        <View style={styles.premiumHeader}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 4 }}>
-                                <FontAwesome5
-                                    name="crown"
-                                    size={20}
-                                    color={palette.status.success}
-                                    style={{ marginRight: 8 }}
-                                />
-                                <ThemedText style={styles.planName}>Premium</ThemedText>
+                    {subscriptions.filter(s => s.price > 0).map((plan, index) => (
+                        <Animated.View 
+                            key={plan._id}
+                            entering={FadeInDown.delay(200 + index * 100).duration(500).springify()} 
+                            style={[styles.planCard, plan.planName.toLowerCase().includes('premium') && styles.premiumCard]}
+                        >
+                            <View style={plan.planName.toLowerCase().includes('premium') ? styles.premiumHeader : styles.planHeader}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 4 }}>
+                                    {plan.planName.toLowerCase().includes('premium') && (
+                                        <FontAwesome5
+                                            name="crown"
+                                            size={20}
+                                            color={palette.status.success}
+                                            style={{ marginRight: 8 }}
+                                        />
+                                    )}
+                                    <ThemedText style={styles.planName}>{plan.planName}</ThemedText>
+                                </View>
+                                <View style={styles.priceRow}>
+                                    <ThemedText style={[styles.price, plan.planName.toLowerCase().includes('premium') && { color: palette.status.success }]}>
+                                        ${plan.price}
+                                    </ThemedText>
+                                    <ThemedText style={styles.perMonth}>/{plan.planType === 'monthly' ? 'month' : 'year'}</ThemedText>
+                                </View>
+                                {isPremium && userSub?.stripePriceId === plan.stripePriceId && (
+                                    <View style={styles.currentPlanBadge}>
+                                        <ThemedText style={styles.currentPlanText}>Active Plan</ThemedText>
+                                    </View>
+                                )}
                             </View>
-                            <View style={styles.priceRow}>
-                                <ThemedText style={[styles.price, { color: palette.status.success }]}>$9.99</ThemedText>
-                                <ThemedText style={styles.perMonth}>/month</ThemedText>
+                            <View style={styles.featuresList}>
+                                {plan.features.map((feature, fIndex) => (
+                                    <FeatureItem key={fIndex} text={feature} active={plan.planName.toLowerCase().includes('premium')} />
+                                ))}
+                                {plan.simulationsUnlimited ? (
+                                    <FeatureItem text="Unlimited simulations" active={plan.planName.toLowerCase().includes('premium')} />
+                                ) : (
+                                    <FeatureItem text={`Up to ${plan.simulationsLimit} simulations`} active={plan.planName.toLowerCase().includes('premium')} />
+                                )}
                             </View>
-                        </View>
-                        <View style={styles.featuresList}>
-                            <FeatureItem text="Unlimited simulations" active />
-                            <FeatureItem text="Advanced AI guidance" active />
-                            <FeatureItem text="Detailed savings projections" active />
-                            <FeatureItem text="Priority support" active />
-                            <FeatureItem text="Export simulation reports" active />
-                            <FeatureItem text="Custom financial scenarios" active />
-                            <FeatureItem text="Multi-device sync" active />
-                        </View>
 
-                        <Button
-                            label="Upgrade to Premium"
-                            onPress={() => router.push('/profile/checkout')}
-                            style={styles.upgradeButton}
-                        />
-                    </Animated.View>
+                            <Button
+                                label={isPremium && userSub?.stripePriceId === plan.stripePriceId ? "Current Plan" : `Upgrade to ${plan.planName}`}
+                                onPress={() => {
+                                    dispatch(setSelectedPlan(plan));
+                                    router.push('/profile/checkout' as any);
+                                }}
+                                disabled={isPremium && userSub?.stripePriceId === plan.stripePriceId}
+                                style={[styles.upgradeButton, plan.planName.toLowerCase().includes('premium') && { backgroundColor: palette.status.success }]}
+                            />
+                        </Animated.View>
+                    ))}
+
+                    {/* Show hardcoded Free Plan only if user is not premium and no other plans are loading */}
+                    {!isPremium && !loading && (
+                        <Animated.View entering={FadeInDown.delay(200).duration(500).springify()} style={styles.planCard}>
+                            <View style={styles.planHeader}>
+                                <ThemedText style={styles.planName}>Free</ThemedText>
+                                <View style={styles.priceRow}>
+                                    <ThemedText style={styles.price}>$0</ThemedText>
+                                    <ThemedText style={styles.perMonth}>/month</ThemedText>
+                                </View>
+                                <View style={styles.currentPlanBadge}>
+                                    <ThemedText style={styles.currentPlanText}>Current Plan</ThemedText>
+                                </View>
+                            </View>
+                            <View style={styles.featuresList}>
+                                <FeatureItem text="Up to 5 simulations per month" />
+                                <FeatureItem text="Basic financial impact analysis" />
+                                <FeatureItem text="Safe/Tight/Risky indicators" />
+                                <FeatureItem text="Payment comparison" />
+                            </View>
+                        </Animated.View>
+                    )}
 
                     {/* Why Go Premium */}
                     <Animated.View entering={FadeInDown.delay(400).duration(500).springify()} style={styles.whyCard}>

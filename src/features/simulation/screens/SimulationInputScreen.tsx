@@ -10,6 +10,7 @@ import { palette, radius, spacing, typography } from '@/src/design-system';
 import { updateProfile } from '@/src/features/profile/profileSlice';
 import { AppDispatch, RootState } from '@/src/store/store';
 import { Ionicons } from '@expo/vector-icons';
+import { SimulationLimitModal } from '@/src/components';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useDispatch, useSelector } from 'react-redux';
 
@@ -17,8 +18,14 @@ export default function SimulationInputScreen() {
     const router = useRouter();
     const dispatch = useDispatch<AppDispatch>();
     const { loading } = useSelector((state: RootState) => state.profile);
+    const { history } = useSelector((state: RootState) => state.simulation);
     const userId = useSelector((state: RootState) => state.auth.user?.id || (state.auth.user as any)?._id);
     const insets = useSafeAreaInsets();
+    
+    // Limit state
+    const [showLimitModal, setShowLimitModal] = useState(false);
+    const simulationCount = history?.length || 0;
+    const MAX_SIMULATIONS = 5;
     const [name, setName] = useState('');
     const [amount, setAmount] = useState('');
     const [paymentMethod, setPaymentMethod] = useState<'full' | 'finance'>('finance');
@@ -49,6 +56,11 @@ export default function SimulationInputScreen() {
     const monthlyPayment = calculateMonthly();
 
     const handleRunSimulation = async () => {
+        if (simulationCount >= MAX_SIMULATIONS) {
+            setShowLimitModal(true);
+            return;
+        }
+
         const simPayload = {
             userId: userId, // Added userId to payload
             purchaseAmount: principal,
@@ -172,11 +184,21 @@ export default function SimulationInputScreen() {
 
             <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.lg }]}>
                 <Button
-                    label={loading ? "Saving config..." : "Run Simulation"}
+                    label={loading ? "Saving config..." : (simulationCount >= MAX_SIMULATIONS ? "Limit Reached" : "Run Simulation")}
                     onPress={handleRunSimulation}
                     disabled={loading || principal === 0}
+                    style={simulationCount >= MAX_SIMULATIONS ? styles.buttonDisabled : undefined}
                 />
             </View>
+
+            <SimulationLimitModal
+                visible={showLimitModal}
+                onClose={() => setShowLimitModal(false)}
+                onSubscribe={() => {
+                    setShowLimitModal(false);
+                    router.push('/profile/subscription' as any);
+                }}
+            />
         </View>
     );
 }
@@ -314,5 +336,8 @@ const styles = StyleSheet.create({
         backgroundColor: palette.neutral.white,
         borderTopWidth: 1,
         borderTopColor: palette.neutral.gray100,
+    },
+    buttonDisabled: {
+        backgroundColor: palette.neutral.gray800,
     }
 });

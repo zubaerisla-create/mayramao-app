@@ -8,18 +8,97 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { Button, Input } from '@/src/components';
 import { palette, radius, spacing, typography } from '@/src/design-system';
+import { useAppDispatch, useAppSelector } from '@/src/store/hooks';
+import { purchaseSubscription, fetchStripeKey } from '../subscriptionSlice';
+import { getProfile } from '@/src/features/profile/profileSlice';
+import { ActivityIndicator, Alert } from 'react-native';
+import { StripeProvider, CardField, useStripe } from '@stripe/stripe-react-native';
 
 export default function CheckoutScreen() {
     const router = useRouter();
+    const dispatch = useAppDispatch();
+    const { selectedPlan, purchaseLoading, stripeKey, error: subError } = useAppSelector(state => state.subscription);
+    const { user } = useAppSelector(state => state.auth);
+
+    React.useEffect(() => {
+        dispatch(fetchStripeKey());
+    }, [dispatch]);
+
+    return (
+        <StripeProvider
+            publishableKey={stripeKey || ''}
+            merchantIdentifier="merchant.com.mayramao" // Optional
+        >
+            <CheckoutContent />
+        </StripeProvider>
+    );
+}
+
+function CheckoutContent() {
+    const router = useRouter();
+    const dispatch = useAppDispatch();
+    const { selectedPlan, purchaseLoading, error: subError } = useAppSelector(state => state.subscription);
+    const { user } = useAppSelector(state => state.auth);
+    const { createPaymentMethod } = useStripe();
+
     const [form, setForm] = useState({
-        name: 'John Doe',
-        cardNumber: '',
-        expiry: '',
-        cvc: '123'
+        name: user?.name || '',
     });
+
+    React.useEffect(() => {
+        if (!selectedPlan) {
+            router.replace('/profile/subscription' as any);
+        }
+    }, [selectedPlan]);
 
     const handleChange = (key: string, value: string) => {
         setForm(prev => ({ ...prev, [key]: value }));
+    };
+
+    const handlePurchase = async () => {
+        if (!form.name) {
+            Alert.alert("Error", "Please entering cardholder name.");
+            return;
+        }
+
+        if (!selectedPlan) return;
+
+        // Generate real paymentMethodId using Stripe SDK
+        const { paymentMethod, error } = await createPaymentMethod({
+            paymentMethodType: 'Card',
+            billingDetails: {
+                name: form.name,
+                email: user?.email,
+            },
+        });
+
+        if (error) {
+            Alert.alert("Payment Error", error.message || "Failed to create payment method.");
+            return;
+        }
+
+        const resultAction = await dispatch(purchaseSubscription({
+            planId: selectedPlan._id,
+            paymentMethodId: paymentMethod.id,
+            cardHolderName: form.name
+        }));
+
+        if (purchaseSubscription.fulfilled.match(resultAction)) {
+            // Refresh profile to get updated subscription status
+            const userId = user?.id || (user as any)?._id;
+            if (userId) {
+                dispatch(getProfile(userId));
+            }
+            
+            Alert.alert(
+                "Success!", 
+                "Your subscription has been activated successfully.",
+                [{ text: "Great", onPress: () => router.replace('/(tabs)' as any) }]
+            );
+        } else {
+            const errorMessage = (resultAction.payload as any)?.message || "Payment failed. Please try again.";
+            Alert.alert("Payment Failed", errorMessage);
+        }
     };
 
     return (
@@ -38,6 +117,12 @@ export default function CheckoutScreen() {
                     <View style={{ width: 40 }} />
                 </View>
 
+                {subError && (
+                    <View style={styles.errorBanner}>
+                        <ThemedText style={styles.errorText}>{subError}</ThemedText>
+                    </View>
+                )}
+
                 <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
                     <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
@@ -46,11 +131,11 @@ export default function CheckoutScreen() {
                             <View style={styles.summaryRow}>
                                 <View>
                                     <ThemedText style={styles.summaryLabel}>Selected Plan</ThemedText>
-                                    <ThemedText style={styles.summaryPlan}>Premium Membership</ThemedText>
+                                    <ThemedText style={styles.summaryPlan}>{selectedPlan?.planName || 'Plan'}</ThemedText>
                                 </View>
                                 <View style={{ alignItems: 'flex-end' }}>
                                     <ThemedText style={styles.summaryLabel}>Total</ThemedText>
-                                    <ThemedText style={styles.summaryPrice}>$9.99</ThemedText>
+                                    <ThemedText style={styles.summaryPrice}>${selectedPlan?.price || '0.00'}</ThemedText>
                                 </View>
                             </View>
 
@@ -69,34 +154,19 @@ export default function CheckoutScreen() {
                                 placeholder="Enter Name"
                             />
 
-                            <LabeledInput
-                                label="Card Number"
-                                value={form.cardNumber}
-                                onChangeText={(text: string) => handleChange('cardNumber', text)}
-                                placeholder="0000 0000 0000 0000"
-                                keyboardType="numeric"
+                            <ThemedText style={styles.label}>Card Details</ThemedText>
+                            <CardField
+                                postalCodeEnabled={false}
+                                placeholder={{
+                                    number: '#### #### #### ####',
+                                }}
+                                cardStyle={{
+                                    backgroundColor: '#FFFFFF',
+                                    textColor: '#000000',
+                                    placeholderColor: palette.neutral.gray400,
+                                }}
+                                style={styles.cardField}
                             />
-
-                            <View style={styles.row}>
-                                <View style={{ flex: 1, marginRight: spacing.sm }}>
-                                    <LabeledInput
-                                        label="Expiry"
-                                        value={form.expiry}
-                                        onChangeText={(text: string) => handleChange('expiry', text)}
-                                        placeholder="MM/YY"
-                                        keyboardType="numeric"
-                                    />
-                                </View>
-                                <View style={{ flex: 1, marginLeft: spacing.sm }}>
-                                    <LabeledInput
-                                        label="CVC"
-                                        value={form.cvc}
-                                        onChangeText={(text: string) => handleChange('cvc', text)}
-                                        placeholder="123"
-                                        keyboardType="numeric"
-                                    />
-                                </View>
-                            </View>
                         </Animated.View>
 
                     </ScrollView>
@@ -104,11 +174,10 @@ export default function CheckoutScreen() {
 
                 <View style={styles.footer}>
                     <Button
-                        label="Pay $9.99"
-                        onPress={() => {
-                            // Mock payment success
-                            alert('Payment Processing...');
-                        }}
+                        label={purchaseLoading ? "Processing..." : `Pay $${selectedPlan?.price || '0.00'}`}
+                        onPress={handlePurchase}
+                        isLoading={purchaseLoading}
+                        disabled={purchaseLoading || !selectedPlan}
                         style={styles.payButton}
                     />
                 </View>
@@ -250,5 +319,23 @@ const styles = StyleSheet.create({
         backgroundColor: palette.brand.primary,
         width: '100%',
         height: 56,
+    },
+    errorBanner: {
+        backgroundColor: '#FEE2E2',
+        padding: spacing.sm,
+        alignItems: 'center',
+    },
+    errorText: {
+        color: '#B91C1C',
+        fontSize: 12,
+        fontWeight: '600',
+    },
+    cardField: {
+        width: '100%',
+        height: 50,
+        marginVertical: spacing.sm,
+        borderWidth: 1,
+        borderColor: palette.neutral.gray200,
+        borderRadius: radius.md,
     }
 });

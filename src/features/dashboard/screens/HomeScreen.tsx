@@ -14,6 +14,7 @@ import { SimulationItemCard } from '../components/SimulationItemCard';
 import { getUserSimulation, setCurrentSimulation } from '@/src/features/simulation/simulationSlice';
 import { useAppDispatch, useAppSelector } from '@/src/store/hooks';
 import { formatDistanceToNow, parseISO } from 'date-fns';
+import { SimulationLimitModal } from '@/src/components';
 
 export default function HomeScreen() {
     const router = useRouter();
@@ -23,6 +24,11 @@ export default function HomeScreen() {
     const { history } = useAppSelector((state) => state.simulation);
     const { user } = useAppSelector((state) => state.auth);
     const { profile } = useAppSelector((state) => state.profile);
+    const [showLimitModal, setShowLimitModal] = React.useState(false);
+
+    const simulationCount = history?.length || 0;
+    const MAX_SIMULATIONS = 5;
+    const remainingSimulations = Math.max(0, MAX_SIMULATIONS - simulationCount);
 
     React.useEffect(() => {
         if (user?.id) {
@@ -66,7 +72,16 @@ export default function HomeScreen() {
     };
 
     const handleSimulatePress = () => {
-        router.push('/simulation/new'); // Or simulation flow
+        if (simulationCount >= MAX_SIMULATIONS) {
+            setShowLimitModal(true);
+        } else {
+            router.push('/simulation/new');
+        }
+    };
+
+    const handleSubscribe = () => {
+        setShowLimitModal(false);
+        router.push('/profile/subscription' as any);
     };
 
     // Dynamic Greeting String
@@ -146,16 +161,31 @@ export default function HomeScreen() {
 
                 {/* Simulate CTA */}
                 <View style={styles.section}>
-                    <ThemedText style={styles.sectionTitle}>What are you buying?</ThemedText>
+                    <View style={styles.sectionHeader}>
+                        <ThemedText style={styles.sectionTitle}>What are you buying?</ThemedText>
+                        <View style={styles.limitBadge}>
+                            <ThemedText style={styles.limitText}>
+                                {remainingSimulations} left
+                            </ThemedText>
+                        </View>
+                    </View>
                     <TouchableOpacity
-                        style={styles.ctaButton}
+                        style={[styles.ctaButton, remainingSimulations === 0 && styles.ctaButtonDisabled]}
                         activeOpacity={0.9}
                         onPress={handleSimulatePress}
                     >
                         <Ionicons name="sparkles" size={24} color={palette.neutral.white} style={{ marginRight: spacing.sm }} />
-                        <ThemedText style={styles.ctaText}>Simulate a Purchase</ThemedText>
+                        <ThemedText style={styles.ctaText}>
+                            {remainingSimulations === 0 ? "Upgrade to Simulate" : "Simulate a Purchase"}
+                        </ThemedText>
                     </TouchableOpacity>
                 </View>
+
+                <SimulationLimitModal 
+                    visible={showLimitModal} 
+                    onClose={() => setShowLimitModal(false)} 
+                    onSubscribe={handleSubscribe} 
+                />
 
                 {/* Recent Simulations */}
                 <View style={styles.section}>
@@ -269,5 +299,19 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         marginTop: spacing.xl,
         paddingHorizontal: spacing.lg,
+    },
+    limitBadge: {
+        backgroundColor: palette.brand.primary + '15',
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: radius.full,
+    },
+    limitText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: palette.brand.primary,
+    },
+    ctaButtonDisabled: {
+        backgroundColor: palette.neutral.gray800,
     }
 });

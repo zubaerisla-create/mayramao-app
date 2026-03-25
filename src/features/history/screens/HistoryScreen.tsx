@@ -27,31 +27,31 @@ const groupHistoryData = (historyData: any[]) => {
 
     historyData.forEach(item => {
         const date = parseISO(item.createdAt);
-        const riskLevel = item.aiResponse?.calculation?.risk_level || item.aiResponse?.ai_guidance?.risk_level;
+        const riskLevel = item?.aiResponse?.calculation?.risk_level || item?.aiResponse?.ai_guidance?.risk_level;
         let status: 'safe' | 'tight' | 'risky' = 'safe';
         if (riskLevel === 'RISKY') status = 'risky';
         else if (riskLevel === 'CAUTIOUS' || riskLevel === 'TIGHT') status = 'tight';
         else if (riskLevel === 'SAFE' || riskLevel === 'COMFORTABLE') status = 'safe';
+ 
+        const calc = item?.aiResponse?.calculation || {};
+        const payload = item?.requestPayload || {};
+        const displayAmount = payload?.purchaseAmount || 0;
+        const displayMethod = payload?.paymentType?.toLowerCase().includes('finance') ? 'finance' : 'full';
+        const displayDuration = payload?.loanDuration || 0;
+        const disposableIncome = Math.abs(calc?.baseline_disposable_income || 0);
 
-        const calc = item.aiResponse?.calculation || {};
-        const payload = item.requestPayload || {};
-        const displayAmount = payload.purchaseAmount || 0;
-        const displayMethod = payload.paymentType?.toLowerCase().includes('finance') ? 'finance' : 'full';
-        const displayDuration = payload.loanDuration || 0;
-        const disposableIncome = Math.abs(calc.baseline_disposable_income || 0);
-
-        const recoveryTime = calc.recovery_months !== undefined ? calc.recovery_months : (displayMethod === 'full'
+        const recoveryTime = calc?.recovery_months !== undefined ? calc.recovery_months : (displayMethod === 'full'
             ? Math.ceil(displayAmount / (disposableIncome * 0.5 || 1))
             : displayDuration);
 
         const mappedItem = {
             id: item._id,
-            name: payload.planName || 'Simulation',
+            name: payload?.planName || 'Simulation',
             price: displayAmount,
             date: format(date, 'h:mm a'),
             status: status,
-            payment: formatPaymentType(payload.paymentType, payload.loanDuration),
-            recovery: `${recoveryTime || 0}mo`
+            payment: formatPaymentType(payload?.paymentType, payload?.loanDuration),
+            recovery: `${recoveryTime}mo`
         };
 
         if (isToday(date)) today.push(mappedItem);

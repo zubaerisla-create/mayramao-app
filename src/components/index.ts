@@ -3,4 +3,5 @@ export * from './Button';
 export * from './Card';
 export * from './CustomTabBar';
 export * from './Input';
+export * from './SimulationLimitModal';
 

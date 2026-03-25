@@ -1,6 +1,6 @@
 import { palette, radius, spacing, typography } from '@/src/design-system';
 import React from 'react';
-import { ActivityIndicator, StyleSheet, Text, TextStyle, ViewStyle } from 'react-native';
+import { ActivityIndicator, StyleProp, StyleSheet, Text, TextStyle, ViewStyle } from 'react-native';
 import { ScaleButton } from './Animated/ScaleButton';
 
 interface ButtonProps {
@@ -10,8 +10,8 @@ interface ButtonProps {
     size?: 'sm' | 'md' | 'lg';
     isLoading?: boolean;
     disabled?: boolean;
-    style?: ViewStyle;
-    textStyle?: TextStyle;
+    style?: StyleProp<ViewStyle>;
+    textStyle?: StyleProp<TextStyle>;
     leftIcon?: React.ReactNode;
     rightIcon?: React.ReactNode;
 }

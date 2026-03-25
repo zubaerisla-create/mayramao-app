@@ -4,6 +4,7 @@ import { persistReducer, persistStore } from "redux-persist";
 import authReducer from "../features/auth/authSlice";
 import profileReducer from "../features/profile/profileSlice";
 import simulationReducer from "../features/simulation/simulationSlice";
+import subscriptionReducer from "../features/subscription/subscriptionSlice";
 
 const persistConfig = {
   key: "root",
@@ -15,6 +16,7 @@ const rootReducer = combineReducers({
   auth: authReducer,
   profile: profileReducer,
   simulation: simulationReducer,
+  subscription: subscriptionReducer,
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

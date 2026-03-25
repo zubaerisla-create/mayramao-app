@@ -35,24 +35,46 @@ export default function SimulationResultScreen() {
     const { simulation: simData, loading, error } = useSelector((state: RootState) => state.simulation);
     const isHistory = params.isHistory === 'true';
 
+    // Calculate initial disposable income from profile
+    const initialDisposable = React.useMemo(() => {
+        if (!profile) return 0;
+        const income = Number(profile.monthlyIncome) || 0;
+        const fixed = (profile.fixedExpenses
+            ? Object.values(profile.fixedExpenses).reduce((a: any, b: any) => a + (Number(b) || 0), 0)
+            : 0) as number;
+        const variable = Number(profile.variableExpenses) || 0;
+        const loans = (Number(profile.existingLoans) || Number(profile.totalMonthlyLoanPayments) || 0) as number;
+        return income - fixed - variable - loans;
+    }, [profile]);
+
+    const [currentDisposable, setCurrentDisposable] = React.useState(initialDisposable);
+    const [updatedDisposable, setUpdatedDisposable] = React.useState<number | null>(null);
+
+    useEffect(() => {
+        if (profile) {
+            setCurrentDisposable(initialDisposable);
+        }
+    }, [profile, initialDisposable]);
+
     useEffect(() => {
         // Skip calling API if we are viewing a historical simulation
         if (isHistory) return;
 
         const userId = user?.id || (user as any)?._id;
-        if (userId && amount > 0) {
+        // Only run if we don't have simulation data yet or it's for a different user/amount
+        const shouldRun = userId && amount > 0 && (!simData || simData.userId !== userId || simData.requestPayload?.purchaseAmount !== amount);
+
+        if (shouldRun && !loading) {
             const simulationPayload = {
                 userId: userId
             };
             
             console.log("Calling createSimulation with payload:", simulationPayload);
             dispatch(createSimulation(simulationPayload));
-        } else if (!userId) {
+        } else if (!userId && !loading) {
             console.error("No user ID found. Please login first.");
-        } else if (amount === 0) {
-            console.error("Invalid purchase amount.");
         }
-    }, [dispatch, user?.id, (user as any)?._id, amount, isHistory]);
+    }, [dispatch, user?.id, (user as any)?._id, amount, isHistory, simData, loading]);
 
     if (error) {
         return (
@@ -63,35 +85,50 @@ export default function SimulationResultScreen() {
         );
     }
 
-    if (loading || !simData) {
-        return (
-            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-                <ActivityIndicator size="large" color={palette.brand.primary} />
-                <ThemedText style={{ marginTop: 16 }}>Running Simulation...</ThemedText>
-            </View>
-        );
-    }
-
-    // Extract data from backend response - matching the structure from your Postman example
-    const aiResponse = simData.aiResponse;
+    // Extract data from backend response
+    const aiResponse = simData?.aiResponse;
     const calc = aiResponse?.calculation || {};
     const aiGuidance = aiResponse?.ai_guidance || {};
     
     // Get values from the calculation
-    const disposableIncome = Math.abs(calc.baseline_disposable_income || 0);
-    const savingsAfterPurchase = calc.savings_after_purchase || profile?.currentSavings || 0;
-    const emergencyBuffer = calc.emergency_buffer || 0;
-    const monthlyPaymentFromApi = calc.monthly_payment || 
-        (isHistory ? simData.requestPayload?.monthlyPayment : monthlyPayment);
-    
+    const monthlyPaymentFromApi = calc?.monthly_payment || 
+        (isHistory ? simData?.requestPayload?.monthlyPayment : monthlyPayment) || 0;
+
+    // Update updatedDisposable when data is received
+    useEffect(() => {
+        if (simData && !loading) {
+            setUpdatedDisposable(currentDisposable - (monthlyPaymentFromApi || 0));
+        }
+    }, [simData, loading, currentDisposable, monthlyPaymentFromApi]);
+
+    if (loading) {
+        // Show partial UI during loading as per instructions
+    }
+
+    if (!simData && !loading) {
+        return (
+            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', padding: 20 }]}>
+                <Ionicons name="alert-circle-outline" size={48} color={palette.status.warning} />
+                <ThemedText style={{ marginTop: 16, textAlign: 'center' }}>
+                    Unable to load simulation data. Please try again.
+                </ThemedText>
+                <Button 
+                    label="Back to Input" 
+                    onPress={() => router.back()} 
+                    style={{ marginTop: 24, width: '100%' }} 
+                />
+            </View>
+        );
+    }
+
     // Fallback display values for historical view if not in params
-    const displayAmount = isHistory ? (simData.requestPayload?.purchaseAmount || amount) : amount;
-    const displayMethod = isHistory ? (simData.requestPayload?.paymentType?.toLowerCase().includes('finance') ? 'finance' : 'full') : paymentMethod;
-    const displayDuration = isHistory ? (simData.requestPayload?.loanDuration || duration) : duration;
+    const displayAmount = isHistory ? (simData?.requestPayload?.purchaseAmount || amount) : amount;
+    const displayMethod = isHistory ? (simData?.requestPayload?.paymentType?.toLowerCase().includes('finance') ? 'finance' : 'full') : paymentMethod;
+    const displayDuration = isHistory ? (simData?.requestPayload?.loanDuration || duration) : duration;
     
     // Risk Logic mapped to local status type
     let status: 'safe' | 'tight' | 'risky' = 'safe';
-    const riskLevel = calc.risk_level || aiGuidance.risk_level;
+    const riskLevel = calc?.risk_level || aiGuidance?.risk_level;
     
     if (riskLevel === 'RISKY') status = 'risky';
     else if (riskLevel === 'CAUTIOUS' || riskLevel === 'TIGHT') status = 'tight';
@@ -99,6 +136,7 @@ export default function SimulationResultScreen() {
 
     // Colors & Text
     const statusColor = status === 'safe' ? palette.status.success : status === 'tight' ? palette.status.warning : palette.status.error;
+    const disposableIncomeValue = calc?.baseline_disposable_income || currentDisposable;
     const statusBg = status === 'safe' ? palette.pastel.green : status === 'tight' ? '#FFF8E1' : '#FFEBEE';
     const statusText = status === 'safe' ? 'Safe' : status === 'tight' ? 'Tight' : 'Risky';
     const statusDesc = aiGuidance.guidance ||
@@ -108,8 +146,8 @@ export default function SimulationResultScreen() {
                 ? 'This purchase will reduce your flexibility but is manageable.'
                 : 'This purchase may strain your financial stability.');
 
-    const recoveryTime = calc.recovery_months !== undefined ? calc.recovery_months : (displayMethod === 'full'
-        ? Math.ceil(displayAmount / (disposableIncome * 0.5))
+    const recoveryTime = calc?.recovery_months !== undefined ? calc.recovery_months : (displayMethod === 'full'
+        ? Math.ceil(displayAmount / (disposableIncomeValue * 0.5 || 1))
         : displayDuration);
 
     // Use savings from profile or from calculation
@@ -150,19 +188,43 @@ export default function SimulationResultScreen() {
                 </View>
 
                 {/* Metrics */}
-                <Animated.View entering={FadeInDown.delay(300).springify()} style={{ flexDirection: 'row', gap: spacing.md, width: '100%' }}>
-                    <View style={[styles.card, { flex: 1 }]}>
-                        <ThemedText>
-                            {displayMethod === 'full' ? 'Total Cost' : 'Monthly Payment'}
+                <Animated.View entering={FadeInDown.delay(300).springify()} style={{ flexDirection: 'column', gap: spacing.md, width: '100%' }}>
+                    
+                    {/* Monthly Disposable Income Card - Highlighted for UX */}
+                    <View style={[styles.card, styles.highlightCard]}>
+                        <View style={styles.cardHeaderRow}>
+                            <ThemedText style={styles.cardLabel}>Monthly Disposable</ThemedText>
+                            {loading && (
+                                <View style={styles.calculatingTag}>
+                                    <ActivityIndicator size="small" color={palette.brand.primary} style={{ marginRight: 6 }} />
+                                    <ThemedText style={styles.calculatingText}>Calculating...</ThemedText>
+                                </View>
+                            )}
+                        </View>
+                        <ThemedText style={styles.disposableValue}>
+                            ${(updatedDisposable !== null ? updatedDisposable : currentDisposable).toLocaleString()}
                         </ThemedText>
-                        <ThemedText style={styles.metricValue}>
-                            ${displayMethod === 'full' ? displayAmount.toLocaleString() : (monthlyPaymentFromApi || 0).toFixed(0)}
+                        <ThemedText style={styles.disposableSubtext}>
+                            {updatedDisposable !== null ? 'Projected after purchase' : 'Current available'}
                         </ThemedText>
                     </View>
-                    <View style={[styles.card, { flex: 1 }]}>
-                        <ThemedText>Recovery Time</ThemedText>
-                        <ThemedText style={styles.metricValue}>{recoveryTime}</ThemedText>
-                        <ThemedText style={styles.metricUnit}>months</ThemedText>
+
+                    <View style={{ flexDirection: 'row', gap: spacing.md }}>
+                        <View style={[styles.card, { flex: 1 }]}>
+                            <ThemedText style={styles.cardLabel}>
+                                {displayMethod === 'full' ? 'Total Cost' : 'Monthly Payment'}
+                            </ThemedText>
+                            <ThemedText style={styles.metricValue}>
+                                ${displayMethod === 'full' ? displayAmount.toLocaleString() : (monthlyPaymentFromApi || 0).toLocaleString()}
+                            </ThemedText>
+                        </View>
+                        <View style={[styles.card, { flex: 1 }]}>
+                            <ThemedText style={styles.cardLabel}>Recovery Time</ThemedText>
+                            <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+                                <ThemedText style={styles.metricValue}>{recoveryTime}</ThemedText>
+                                <ThemedText style={styles.metricUnit}> mo</ThemedText>
+                            </View>
+                        </View>
                     </View>
                 </Animated.View>
 
@@ -218,7 +280,7 @@ export default function SimulationResultScreen() {
 
                             for (let i = 0; i <= monthsToProject; i++) {
                                 // Without Purchase
-                                const valWithout = savings + (disposableIncome * i);
+                                const valWithout = savings + (disposableIncomeValue * i);
                                 dataWithout.push({ x: i, y: valWithout });
                                 if (valWithout > maxVal) maxVal = valWithout;
 
@@ -226,10 +288,10 @@ export default function SimulationResultScreen() {
                                 let valWith = 0;
                                 if (displayMethod === 'full') {
                                     // Immediate deduction at month 0
-                                    valWith = (savings - displayAmount) + (disposableIncome * i);
+                                    valWith = (savings - displayAmount) + (disposableIncomeValue * i);
                                 } else {
                                     // Monthly deduction
-                                    valWith = savings + ((disposableIncome - (monthlyPaymentFromApi || 0)) * i);
+                                    valWith = savings + ((disposableIncomeValue - (monthlyPaymentFromApi || 0)) * i);
                                 }
                                 dataWith.push({ x: i, y: valWith });
                                 if (valWith > maxVal) maxVal = valWith;
@@ -510,8 +572,49 @@ const styles = StyleSheet.create({
         color: palette.neutral.gray900,
     },
     metricUnit: {
-        fontSize: 12,
+        fontSize: 14,
         color: palette.neutral.gray500,
+        fontWeight: '500',
+    },
+    highlightCard: {
+        borderColor: palette.brand.primary,
+        borderWidth: 1.5,
+        backgroundColor: '#F8FAFC',
+    },
+    cardHeaderRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: spacing.xs,
+    },
+    cardLabel: {
+        fontSize: 13,
+        color: palette.neutral.gray500,
+        fontWeight: '500',
+    },
+    disposableValue: {
+        fontSize: 28,
+        fontWeight: '800',
+        color: palette.neutral.gray900,
+    },
+    disposableSubtext: {
+        fontSize: 11,
+        color: palette.neutral.gray400,
+        marginTop: 2,
+    },
+    calculatingTag: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: palette.brand.primary + '10',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: radius.sm,
+    },
+    calculatingText: {
+        fontSize: 10,
+        fontWeight: '700',
+        color: palette.brand.primary,
+        textTransform: 'uppercase',
     },
     section: {
         backgroundColor: palette.neutral.white,
