@@ -17,26 +17,6 @@ import { StripeProvider, CardField, useStripe } from '@stripe/stripe-react-nativ
 export default function CheckoutScreen() {
     const router = useRouter();
     const dispatch = useAppDispatch();
-    const { selectedPlan, purchaseLoading, stripeKey, error: subError } = useAppSelector(state => state.subscription);
-    const { user } = useAppSelector(state => state.auth);
-
-    React.useEffect(() => {
-        dispatch(fetchStripeKey());
-    }, [dispatch]);
-
-    return (
-        <StripeProvider
-            publishableKey={stripeKey || ''}
-            merchantIdentifier="merchant.com.mayramao" // Optional
-        >
-            <CheckoutContent />
-        </StripeProvider>
-    );
-}
-
-function CheckoutContent() {
-    const router = useRouter();
-    const dispatch = useAppDispatch();
     const { selectedPlan, purchaseLoading, error: subError } = useAppSelector(state => state.subscription);
     const { user } = useAppSelector(state => state.auth);
     const { createPaymentMethod } = useStripe();
@@ -49,6 +29,7 @@ function CheckoutContent() {
         if (!selectedPlan) {
             router.replace('/profile/subscription' as any);
         }
+        dispatch(fetchStripeKey());
     }, [selectedPlan]);
 
     const handleChange = (key: string, value: string) => {
@@ -57,7 +38,7 @@ function CheckoutContent() {
 
     const handlePurchase = async () => {
         if (!form.name) {
-            Alert.alert("Error", "Please entering cardholder name.");
+            Alert.alert("Error", "Please enter cardholder name.");
             return;
         }
 
@@ -66,9 +47,11 @@ function CheckoutContent() {
         // Generate real paymentMethodId using Stripe SDK
         const { paymentMethod, error } = await createPaymentMethod({
             paymentMethodType: 'Card',
-            billingDetails: {
-                name: form.name,
-                email: user?.email,
+            paymentMethodData: {
+                billingDetails: {
+                    name: form.name,
+                    email: user?.email,
+                },
             },
         });
 
@@ -157,7 +140,7 @@ function CheckoutContent() {
                             <ThemedText style={styles.label}>Card Details</ThemedText>
                             <CardField
                                 postalCodeEnabled={false}
-                                placeholder={{
+                                placeholders={{
                                     number: '#### #### #### ####',
                                 }}
                                 cardStyle={{

@@ -10,7 +10,6 @@ import { Button } from '@/src/components';
 import { palette, radius, spacing, typography } from '@/src/design-system';
 import { useAppDispatch, useAppSelector } from '@/src/store/hooks';
 import { fetchSubscriptions, setSelectedPlan } from '../subscriptionSlice';
-
 export default function SubscriptionScreen() {
     const router = useRouter();
     const dispatch = useAppDispatch();

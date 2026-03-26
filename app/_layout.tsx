@@ -4,6 +4,7 @@ import {
   ThemeProvider,
 } from "@react-navigation/native";
 import "react-native-reanimated";
+import { StripeProvider } from "@stripe/stripe-react-native";
 
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Stack } from "expo-router";
@@ -23,14 +24,19 @@ export default function RootLayout() {
   return (
     <Provider store={store}>
       <PersistGate loading={null} persistor={persistor}>
-        <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="index" />
-            <Stack.Screen name="onboarding" />
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen name="modal" options={{ presentation: "modal" }} />
-          </Stack>
-        </ThemeProvider>
+        <StripeProvider 
+          publishableKey="pk_test_51PrOoOIB2fwnFU2Pxba0oZ6FFXeipWRUTDKtoYlY0GNAlGId8s9pfq3RKyyTXj4eiQchK2kojT99peyLp3ldumhG00WDiAf38v"
+          merchantIdentifier="merchant.com.mayramao"
+        >
+          <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="index" />
+              <Stack.Screen name="onboarding" />
+              <Stack.Screen name="(tabs)" />
+              <Stack.Screen name="modal" options={{ presentation: "modal" }} />
+            </Stack>
+          </ThemeProvider>
+        </StripeProvider>
       </PersistGate>
     </Provider>
   );
