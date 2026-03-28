@@ -31,6 +31,7 @@ export interface UserSubscription {
 
 interface SubscriptionState {
     subscriptions: ISubscription[];
+    currentSubscription: ISubscription | null;
     selectedPlan: ISubscription | null;
     stripeKey: string | null;
     loading: boolean;
@@ -40,6 +41,7 @@ interface SubscriptionState {
 
 const initialState: SubscriptionState = {
     subscriptions: [],
+    currentSubscription: null,
     selectedPlan: null,
     stripeKey: null,
     loading: false,
@@ -110,6 +112,26 @@ export const purchaseSubscription = createAsyncThunk(
     }
 );
 
+// 4. Get Current Subscription (GET /subscriptions/current-subscription-id)
+export const fetchCurrentSubscription = createAsyncThunk(
+    "subscription/fetchCurrent",
+    async (_, { getState, rejectWithValue }) => {
+        try {
+            const state = getState();
+            const headers = getAuthHeaders(state);
+            const response = await fetch(`${API_URL}/subscriptions/current-subscription-id`, {
+                method: "GET",
+                headers,
+            });
+            const data = await response.json();
+            if (!response.ok) return rejectWithValue(data);
+            return data.subscription;
+        } catch (err: any) {
+            return rejectWithValue({ message: err.message || "Network error" });
+        }
+    }
+);
+
 const subscriptionSlice = createSlice({
     name: "subscription",
     initialState,
@@ -134,6 +156,20 @@ const subscriptionSlice = createSlice({
         builder.addCase(fetchSubscriptions.rejected, (state, action) => {
             state.loading = false;
             state.error = (action.payload as any)?.message || "Failed to fetch subscriptions";
+        });
+
+        // fetchCurrentSubscription
+        builder.addCase(fetchCurrentSubscription.pending, (state) => {
+            state.loading = true;
+            state.error = null;
+        });
+        builder.addCase(fetchCurrentSubscription.fulfilled, (state, action: PayloadAction<ISubscription>) => {
+            state.loading = false;
+            state.currentSubscription = action.payload;
+        });
+        builder.addCase(fetchCurrentSubscription.rejected, (state, action) => {
+            state.loading = false;
+            state.error = (action.payload as any)?.message || "Failed to fetch current subscription";
         });
 
         // fetchStripeKey

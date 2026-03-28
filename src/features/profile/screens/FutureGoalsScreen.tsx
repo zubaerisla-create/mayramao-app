@@ -194,7 +194,7 @@ function AddGoalForm({ initialGoal, onSave, loading }: any) {
                     />
                     <LabeledInput
                         label="Target Date"
-                        placeholder="dd/mm/yyyy"
+                        placeholder="yyyy-mm-dd"
                         value={form.date}
                         onChangeText={(text: string) => handleChange('date', text)}
                         rightIcon={<Ionicons name="calendar-outline" size={20} color={palette.neutral.gray500} />}

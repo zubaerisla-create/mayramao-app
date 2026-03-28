@@ -20,12 +20,14 @@ export default function SimulationInputScreen() {
     const { loading } = useSelector((state: RootState) => state.profile);
     const { history } = useSelector((state: RootState) => state.simulation);
     const userId = useSelector((state: RootState) => state.auth.user?.id || (state.auth.user as any)?._id);
+    const { profile } = useSelector((state: RootState) => state.profile);
     const insets = useSafeAreaInsets();
 
     // Limit state
     const [showLimitModal, setShowLimitModal] = useState(false);
     const simulationCount = history?.length || 0;
-    const MAX_SIMULATIONS = 5;
+    const planLimit = profile?.subscription?.isActive ? (profile?.subscription?.simulationsLimit || 0) : 0;
+    const MAX_SIMULATIONS = 5 + planLimit;
     const [name, setName] = useState('');
     const [amount, setAmount] = useState('');
     const [paymentMethod, setPaymentMethod] = useState<'full' | 'finance'>('finance');
@@ -195,7 +197,7 @@ export default function SimulationInputScreen() {
 
             <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.lg }]}>
                 <Button
-                    label={loading ? "Saving config..." : (simulationCount >= MAX_SIMULATIONS ? "Limit Reached" : "Run Simulation")}
+                    label={loading ? "Saving config..." : (simulationCount >= MAX_SIMULATIONS ? "Limit Reached" : `Run Simulation (${simulationCount}/${MAX_SIMULATIONS})`)}
                     onPress={handleRunSimulation}
                     disabled={loading || principal === 0}
                     style={simulationCount >= MAX_SIMULATIONS ? styles.buttonDisabled : undefined}
@@ -204,6 +206,7 @@ export default function SimulationInputScreen() {
 
             <SimulationLimitModal
                 visible={showLimitModal}
+                limit={MAX_SIMULATIONS}
                 onClose={() => setShowLimitModal(false)}
                 onSubscribe={() => {
                     setShowLimitModal(false);

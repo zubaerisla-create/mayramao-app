@@ -70,7 +70,7 @@ export const updateProfile = createAsyncThunk(
             }
 
             const response = await fetch(`${API_URL}/users/profile`, {
-                method: "POST",
+                method: "PATCH",
                 headers,
                 body,
             });

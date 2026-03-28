@@ -11,9 +11,10 @@ interface SimulationLimitModalProps {
     visible: boolean;
     onClose: () => void;
     onSubscribe: () => void;
+    limit?: number;
 }
 
-export function SimulationLimitModal({ visible, onClose, onSubscribe }: SimulationLimitModalProps) {
+export function SimulationLimitModal({ visible, onClose, onSubscribe, limit = 5 }: SimulationLimitModalProps) {
     if (!visible) return null;
 
     return (
@@ -43,7 +44,7 @@ export function SimulationLimitModal({ visible, onClose, onSubscribe }: Simulati
 
                     <ThemedText style={styles.title}>Limit Reached</ThemedText>
                     <ThemedText style={styles.message}>
-                        You have reached the free simulation limit (5). Upgrade to Premium to unlock unlimited simulations and deeper financial insights.
+                        You have reached your simulation limit ({limit}). Upgrade to Premium to unlock unlimited simulations and deeper financial insights.
                     </ThemedText>
 
                     <View style={styles.buttonContainer}>

@@ -12,6 +12,7 @@ import { FinancialOverviewCard } from '../components/FinancialOverviewCard';
 import { SimulationItemCard } from '../components/SimulationItemCard';
 
 import { getUserSimulation, setCurrentSimulation } from '@/src/features/simulation/simulationSlice';
+import { fetchCurrentSubscription } from '@/src/features/subscription/subscriptionSlice';
 import { useAppDispatch, useAppSelector } from '@/src/store/hooks';
 import { formatDistanceToNow, parseISO } from 'date-fns';
 import { SimulationLimitModal } from '@/src/components';
@@ -24,17 +25,21 @@ export default function HomeScreen() {
     const { history } = useAppSelector((state) => state.simulation);
     const { user } = useAppSelector((state) => state.auth);
     const { profile } = useAppSelector((state) => state.profile);
+    const { currentSubscription } = useAppSelector((state) => state.subscription);
     const [showLimitModal, setShowLimitModal] = React.useState(false);
 
     const simulationCount = history?.length || 0;
-    const MAX_SIMULATIONS = 5;
+    const planLimit = profile?.subscription?.isActive ? (profile?.subscription?.simulationsLimit || 0) : 0;
+    const MAX_SIMULATIONS = 5 + planLimit;
     const remainingSimulations = Math.max(0, MAX_SIMULATIONS - simulationCount);
 
+    const userId = user?.id || (user as any)?._id;
+
     React.useEffect(() => {
-        if (user?.id) {
-            dispatch(getUserSimulation(user.id));
+        if (userId) {
+            dispatch(getUserSimulation(userId));
         }
-    }, [dispatch, user]);
+    }, [dispatch, userId]);
 
     const RECENT_SIMULATIONS = React.useMemo(() => {
         if (!history) return [];
@@ -165,7 +170,7 @@ export default function HomeScreen() {
                         <ThemedText style={styles.sectionTitle}>What are you buying?</ThemedText>
                         <View style={styles.limitBadge}>
                             <ThemedText style={styles.limitText}>
-                                {remainingSimulations} left
+                                {simulationCount}/{MAX_SIMULATIONS} used
                             </ThemedText>
                         </View>
                     </View>
@@ -183,6 +188,7 @@ export default function HomeScreen() {
 
                 <SimulationLimitModal 
                     visible={showLimitModal} 
+                    limit={MAX_SIMULATIONS}
                     onClose={() => setShowLimitModal(false)} 
                     onSubscribe={handleSubscribe} 
                 />
