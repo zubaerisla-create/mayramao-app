@@ -7,6 +7,7 @@ import { ThemedText } from '@/components/themed-text';
 import { palette, radius, spacing } from '@/src/design-system';
 
 import { getUserSimulation, setCurrentSimulation } from '@/src/features/simulation/simulationSlice';
+import { getProfile } from '@/src/features/profile/profileSlice';
 import { useRouter } from 'expo-router';
 import { useAppDispatch, useAppSelector } from '@/src/store/hooks';
 import { format, isToday, isYesterday, parseISO } from 'date-fns';
@@ -18,7 +19,7 @@ const formatPaymentType = (type: string, duration: number) => {
     return 'Paid in Full';
 };
 
-const groupHistoryData = (historyData: any[]) => {
+const groupHistoryData = (historyData: any[], profilePlanName: string) => {
     if (!historyData || historyData.length === 0) return [];
 
     const today: any[] = [];
@@ -46,7 +47,7 @@ const groupHistoryData = (historyData: any[]) => {
 
         const mappedItem = {
             id: item._id,
-            name: payload?.planName || 'Simulation',
+            name: payload?.planName || profilePlanName || 'Simulation',
             price: displayAmount,
             date: format(date, 'h:mm a'),
             status: status,
@@ -115,12 +116,16 @@ export default function HistoryScreen() {
     const dispatch = useAppDispatch();
     const { history, loading } = useAppSelector((state) => state.simulation);
     const { user } = useAppSelector((state) => state.auth);
+    const { profile } = useAppSelector((state) => state.profile);
 
     React.useEffect(() => {
         if (user?.id) {
             dispatch(getUserSimulation(user.id));
+            dispatch(getProfile(user.id));
         }
     }, [dispatch, user]);
+
+    const profilePlanName = profile?.planName || '';
 
     const handleCardPress = (id: string) => {
         const item = history.find((h: any) => h._id === id);
@@ -130,7 +135,7 @@ export default function HistoryScreen() {
                 pathname: '/simulation/result',
                 params: {
                     isHistory: 'true',
-                    name: item.requestPayload?.planName || 'Simulation',
+                    name: item.requestPayload?.planName || profilePlanName || 'Simulation',
                     amount: item.requestPayload?.purchaseAmount || 0,
                     paymentMethod: item.requestPayload?.paymentType?.toLowerCase().includes('finance') ? 'finance' : 'full',
                 }
@@ -138,7 +143,7 @@ export default function HistoryScreen() {
         }
     };
 
-    const HISTORY_DATA = React.useMemo(() => groupHistoryData(history), [history]);
+    const HISTORY_DATA = React.useMemo(() => groupHistoryData(history, profilePlanName), [history, profilePlanName]);
 
     return (
         <View style={[styles.container]}>

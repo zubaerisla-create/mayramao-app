@@ -5,14 +5,14 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
-import { Button, Input } from '@/src/components';
+import { Button, Input, SimulationLimitModal } from '@/src/components';
 import { palette, radius, spacing, typography } from '@/src/design-system';
 import { updateProfile } from '@/src/features/profile/profileSlice';
 import { AppDispatch, RootState } from '@/src/store/store';
 import { Ionicons } from '@expo/vector-icons';
-import { SimulationLimitModal } from '@/src/components';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useDispatch, useSelector } from 'react-redux';
+import { useEffect } from 'react';
 
 export default function SimulationInputScreen() {
     const router = useRouter();
@@ -21,7 +21,7 @@ export default function SimulationInputScreen() {
     const { history } = useSelector((state: RootState) => state.simulation);
     const userId = useSelector((state: RootState) => state.auth.user?.id || (state.auth.user as any)?._id);
     const insets = useSafeAreaInsets();
-    
+
     // Limit state
     const [showLimitModal, setShowLimitModal] = useState(false);
     const simulationCount = history?.length || 0;
@@ -29,6 +29,17 @@ export default function SimulationInputScreen() {
     const [name, setName] = useState('');
     const [amount, setAmount] = useState('');
     const [paymentMethod, setPaymentMethod] = useState<'full' | 'finance'>('finance');
+
+    // Debounce planName update
+    useEffect(() => {
+        if (!name.trim()) return;
+        
+        const timer = setTimeout(() => {
+            dispatch(updateProfile({ planName: name }));
+        }, 1000); // 1 second debounce
+
+        return () => clearTimeout(timer);
+    }, [name, dispatch]);
 
     // Loan Config
     const [duration, setDuration] = useState(12); // months
@@ -70,7 +81,7 @@ export default function SimulationInputScreen() {
         };
 
         try {
-            await dispatch(updateProfile({ purchaseSimulation: simPayload })).unwrap();
+            await dispatch(updateProfile({ planName: name, purchaseSimulation: simPayload })).unwrap();
             // Pass data to results
             router.push({
                 pathname: '/simulation/result',
