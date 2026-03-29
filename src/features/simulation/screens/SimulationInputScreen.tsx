@@ -83,19 +83,11 @@ export default function SimulationInputScreen() {
         };
 
         try {
+            // Just clear state and navigate. 
+            // The SimulationResultScreen will handle the 3-step API flow
+            // to provide a continuous "Analyzing Results" loading experience.
             dispatch(clearSimulationState());
 
-            // Step 1: Update Profile with planName (PATCH)
-            console.log("Step 1: Updating planName (PATCH)...");
-            await dispatch(updateProfile({ planName: name })).unwrap();
-
-            // Step 2: Save Purchase Simulation payload (POST)
-            console.log("Step 2: Saving purchaseSimulation (POST)...");
-            await dispatch(savePurchaseSimulation({ purchaseSimulation: simPayload })).unwrap();
-
-            // Step 3: Navigate to results. 
-            // The SimulationResultScreen will then trigger Step 3 (POST /simulations)
-            // with a "good animated loading" UI.
             router.push({
                 pathname: '/simulation/result',
                 params: {
@@ -105,11 +97,13 @@ export default function SimulationInputScreen() {
                     duration: paymentMethod === 'finance' ? duration : 0,
                     interestRate: paymentMethod === 'finance' ? interestRate : 0,
                     monthlyPayment: monthlyPayment.toFixed(2),
+                    // Pass the payload for step 2
+                    simPayload: JSON.stringify(simPayload)
                 }
             });
         } catch (e: any) {
-            console.error("Failed to update simulation profile:", e);
-            alert("Failed to save simulation settings. Please try again.");
+            console.error("Failed to initiate simulation:", e);
+            alert("Something went wrong. Please try again.");
         }
     }
 

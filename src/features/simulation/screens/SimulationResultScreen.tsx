@@ -18,6 +18,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/src/components';
 import { palette, radius, spacing, typography } from '@/src/design-system';
+import { updateProfile, savePurchaseSimulation } from '@/src/features/profile/profileSlice';
 import { createSimulation } from '../simulationSlice';
 import AnimatedStatusCircle from './AnimatedStatusCircle';
 
@@ -56,6 +57,8 @@ export default function SimulationResultScreen() {
 
     const [currentDisposable, setCurrentDisposable] = React.useState(initialDisposable);
     const [updatedDisposable, setUpdatedDisposable] = React.useState<number | null>(null);
+    const [currentStep, setCurrentStep] = React.useState(0);
+    const [localError, setLocalError] = React.useState<string | null>(null);
 
     useEffect(() => {
         if (profile) {
@@ -67,21 +70,39 @@ export default function SimulationResultScreen() {
         // Skip calling API if we are viewing a historical simulation
         if (isHistory) return;
 
-        const userId = user?.id || (user as any)?._id;
-        // Only run if we don't have simulation data yet or it's for a different user/amount
-        const shouldRun = userId && amount > 0 && (!simData || simData.userId !== userId || simData.requestPayload?.purchaseAmount !== amount);
+        const runFullSimulationFlow = async () => {
+            const userId = user?.id || (user as any)?._id;
+            if (!userId) {
+                setLocalError("User authentication required. Please log in again.");
+                return;
+            }
 
-        if (shouldRun && !loading && !simData) {
-            const simulationPayload = {
-                userId: userId
-            };
+            try {
+                // Step 1: Update Profile with planName (PATCH)
+                setCurrentStep(1);
+                console.log("Unified Flow Step 1: PATCH planName");
+                await dispatch(updateProfile({ planName: name })).unwrap();
 
-            console.log("Calling createSimulation recovery with userId:", userId);
-            dispatch(createSimulation(simulationPayload));
-        } else if (!userId && !loading) {
-            console.error("No user ID found. Please login first.");
-        }
-    }, [dispatch, user?.id, (user as any)?._id, amount, isHistory, simData, loading]);
+                // Step 2: Save Purchase Simulation payload (POST)
+                setCurrentStep(2);
+                console.log("Unified Flow Step 2: POST purchaseSimulation");
+                const simPayloadObj = params.simPayload ? JSON.parse(params.simPayload as string) : null;
+                if (simPayloadObj) {
+                    await dispatch(savePurchaseSimulation({ purchaseSimulation: simPayloadObj })).unwrap();
+                }
+
+                // Step 3: Trigger Simulation API (POST)
+                setCurrentStep(3);
+                console.log("Unified Flow Step 3: POST simulations");
+                await dispatch(createSimulation({ userId })).unwrap();
+            } catch (err: any) {
+                console.error("Unified Simulation Flow failed:", err);
+                setLocalError(err.message || "Failed to complete financial analysis. Please try again.");
+            }
+        };
+
+        runFullSimulationFlow();
+    }, [dispatch, user?.id, (user as any)?._id, isHistory]);
 
     // Extract data from backend response
     const aiResponse = simData?.aiResponse;
@@ -99,12 +120,12 @@ export default function SimulationResultScreen() {
         }
     }, [simData, loading, currentDisposable, monthlyPaymentFromApi]);
 
-    if (error) {
+    if (localError || error) {
         return (
             <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', padding: 20 }]}>
                 <Ionicons name="alert-circle-outline" size={48} color={palette.status.error} />
-                <ThemedText style={{ color: palette.status.error, marginVertical: 16, textAlign: 'center' }}>
-                    Error: {error}
+                <ThemedText style={{ color: palette.status.error, marginVertical: 16, textAlign: 'center', fontSize: 16, fontWeight: '600' }}>
+                    {localError || error}
                 </ThemedText>
                 <Button label="Go Back" onPress={() => router.back()} style={{ width: '100%' }} />
             </View>
@@ -125,14 +146,16 @@ export default function SimulationResultScreen() {
                         entering={FadeInDown.delay(200).springify()}
                         style={{ fontSize: 24, fontWeight: '800', color: palette.neutral.gray900, marginBottom: 12 }}
                     >
-                        Analyzing Results
+                        {currentStep === 1 ? "Syncing Profile..." : currentStep === 2 ? "Saving Configuration..." : "Analyzing Results"}
                     </Animated.Text>
                     
                     <Animated.Text 
                         entering={FadeInDown.delay(400).springify()}
                         style={{ textAlign: 'center', color: palette.neutral.gray500, fontSize: 16, lineHeight: 24, marginBottom: 40 }}
                     >
-                        Our AI engine is calculating the long-term impact on your financial health.
+                        {currentStep === 3 
+                            ? "Our AI engine is calculating the long-term impact on your financial health."
+                            : "Preparing your financial data for the simulation engine..."}
                     </Animated.Text>
                     
                     <View style={{ flexDirection: 'row', gap: 12 }}>
@@ -144,7 +167,7 @@ export default function SimulationResultScreen() {
 
                 <View style={{ position: 'absolute', bottom: 60, width: '100%', paddingHorizontal: 40 }}>
                     <ThemedText style={{ textAlign: 'center', color: palette.neutral.gray400, fontSize: 12, textTransform: 'uppercase', letterSpacing: 1 }}>
-                        Step 3/3 • Simulation Engine
+                        Step {currentStep}/3 • {currentStep === 3 ? "Simulation Engine" : "Background Sync"}
                     </ThemedText>
                 </View>
             </View>
