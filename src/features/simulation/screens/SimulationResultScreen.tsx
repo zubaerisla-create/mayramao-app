@@ -132,7 +132,7 @@ export default function SimulationResultScreen() {
         );
     }
 
-    if (loading && !simData) {
+    if ((loading || currentStep > 0) && !simData) {
         return (
             <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', backgroundColor: palette.neutral.white }]}>
                 <View style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, opacity: 0.05, justifyContent: 'center', alignItems: 'center' }}>

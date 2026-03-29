@@ -76,6 +76,7 @@ const simulationSlice = createSlice({
         clearSimulationState(state) {
             state.loading = false;
             state.error = null;
+            state.simulation = null;
         },
         setCurrentSimulation(state, action) {
             state.simulation = action.payload;
