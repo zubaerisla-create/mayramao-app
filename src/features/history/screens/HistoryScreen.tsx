@@ -12,6 +12,7 @@ import { useAppDispatch, useAppSelector } from '@/src/store/hooks';
 import { format, isToday, isYesterday, parseISO } from 'date-fns';
 import { useRouter } from 'expo-router';
 
+
 const formatPaymentType = (type: string, duration: number) => {
     if (type?.toLowerCase() === 'loan' || type?.toLowerCase() === 'financing') {
         return `${duration}mo Loan`;
@@ -39,6 +40,8 @@ const groupHistoryData = (historyData: any[], profilePlanName: string) => {
         const displayAmount = payload?.purchaseAmount || 0;
         const displayMethod = payload?.paymentType?.toLowerCase().includes('finance') ? 'finance' : 'full';
         const displayDuration = payload?.loanDuration || 0;
+        const monthlyPayment = calc?.monthly_payment || payload?.monthlyPayment || 0;
+        const financingRecovery = monthlyPayment ? (calc?.recovery_months || displayDuration) : 0;
         const disposableIncome = Math.abs(calc?.baseline_disposable_income || 0);
 
         const recoveryTime = calc?.recovery_months !== undefined ? calc.recovery_months : (displayMethod === 'full'
@@ -52,7 +55,8 @@ const groupHistoryData = (historyData: any[], profilePlanName: string) => {
             date: format(date, 'h:mm a'),
             status: status,
             payment: formatPaymentType(payload?.paymentType, payload?.loanDuration),
-            recovery: `${recoveryTime}mo`
+            recovery: `${financingRecovery}mo`,
+            monthlyPayment: monthlyPayment
         };
 
         if (isToday(date)) today.push(mappedItem);
@@ -98,8 +102,8 @@ const HistoryItem = ({ item, onPress }: { item: any; onPress: () => void }) => {
 
             <View style={styles.detailsRow}>
                 <View>
-                    <ThemedText style={styles.detailLabel}>Payment</ThemedText>
-                    <ThemedText style={styles.detailValue}>{item.payment}</ThemedText>
+                    <ThemedText style={styles.detailLabel}>Monthly Payment</ThemedText>
+                    <ThemedText style={styles.detailValue}>{`$${(item.monthlyPayment || 0).toLocaleString()}`}</ThemedText>
                 </View>
                 <View>
                     <ThemedText style={styles.detailLabel}>Recovery</ThemedText>

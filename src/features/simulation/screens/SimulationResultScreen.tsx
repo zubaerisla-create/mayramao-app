@@ -42,7 +42,6 @@ export default function SimulationResultScreen() {
     const profile = useSelector((state: RootState) => state.profile.profile);
     const { simulation: simData, loading, error } = useSelector((state: RootState) => state.simulation);
     const isHistory = params.isHistory === 'true';
-
     // Calculate initial disposable income from profile
     const initialDisposable = React.useMemo(() => {
         if (!profile) return 0;
@@ -194,6 +193,7 @@ export default function SimulationResultScreen() {
     const displayAmount = isHistory ? (simData?.requestPayload?.purchaseAmount || amount) : amount;
     const displayMethod = isHistory ? (simData?.requestPayload?.paymentType?.toLowerCase().includes('finance') ? 'finance' : 'full') : paymentMethod;
     const displayDuration = isHistory ? (simData?.requestPayload?.loanDuration || duration) : duration;
+    const financingRecovery = calc?.monthly_payment ? (calc?.recovery_months || displayDuration) : 0;
 
     // Risk Logic mapped to local status type
     let status: 'safe' | 'tight' | 'risky' = 'safe';
@@ -290,7 +290,7 @@ export default function SimulationResultScreen() {
                         <View style={[styles.card, { flex: 1 }]}>
                             <ThemedText style={styles.cardLabel}>Recovery Time</ThemedText>
                             <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
-                                <ThemedText style={styles.metricValue}>{recoveryTime}</ThemedText>
+                                <ThemedText style={styles.metricValue}>{financingRecovery}</ThemedText>
                                 <ThemedText style={styles.metricUnit}> mo</ThemedText>
                             </View>
                         </View>

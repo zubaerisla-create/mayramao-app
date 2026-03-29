@@ -17,7 +17,7 @@ export default function PaymentComparisonScreen() {
 
     const { simulation, history } = useAppSelector(state => state.simulation);
     const profile = useAppSelector(state => state.profile.profile);
-    
+
     // Find the latest simulation if current state is null
     const currentSim = simulation || history?.[0];
     const aiResponse = currentSim?.aiResponse;
@@ -29,12 +29,13 @@ export default function PaymentComparisonScreen() {
     const displayMonthly = currentSim?.requestPayload?.monthlyPayment || parseFloat(params.monthlyPayment as string) || 0;
     const displayDuration = currentSim?.requestPayload?.loanDuration || parseInt(params.duration as string) || 0;
 
-    const totalLoanCost = displayMonthly * displayDuration;
-    
     // Recovery Calc logic
     const disposableIncome = Math.abs(calc?.baseline_disposable_income || 0);
     const fullRecovery = calc?.comparisons?.pay_in_full?.recovery_months || Math.ceil(displayAmount / (disposableIncome * 0.5 || 1));
-    const financingRecovery = calc?.monthly_payment ? (calc?.recovery_months || displayDuration) : 0; 
+    const financingRecovery = calc?.monthly_payment ? (calc?.recovery_months || displayDuration) : 0;
+    
+    const monthlyPaymentVal = calc?.monthly_payment || displayMonthly || 0;
+    const totalLoanCost = monthlyPaymentVal * financingRecovery;
 
     // Risk levels from AI (with fallbacks)
     const payInFullRisk = calc?.comparisons?.pay_in_full?.risk_level || (displayAmount > 1000 ? 'Tight' : 'Safe');
@@ -64,26 +65,26 @@ export default function PaymentComparisonScreen() {
                     <View style={styles.summaryCard}>
                         <ThemedText style={styles.cardTitle}>Pay in Full</ThemedText>
                         <View style={[styles.badge, payInFullRisk.toUpperCase() === 'SAFE' ? styles.badgeSafe : styles.badgeTight]}>
-                            <Ionicons 
-                                name={payInFullRisk.toUpperCase() === 'SAFE' ? "checkmark-circle-outline" : "alert-circle-outline"} 
-                                size={12} 
-                                color={payInFullRisk.toUpperCase() === 'SAFE' ? palette.status.success : palette.status.warning} 
-                                style={{ marginRight: 4 }} 
+                            <Ionicons
+                                name={payInFullRisk.toUpperCase() === 'SAFE' ? "checkmark-circle-outline" : "alert-circle-outline"}
+                                size={12}
+                                color={payInFullRisk.toUpperCase() === 'SAFE' ? palette.status.success : palette.status.warning}
+                                style={{ marginRight: 4 }}
                             />
                             <Text style={payInFullRisk.toUpperCase() === 'SAFE' ? styles.badgeTextSafe : styles.badgeTextTight}>{payInFullRisk}</Text>
                         </View>
                         <ThemedText style={styles.cardSubtitle}>Immediate impact</ThemedText>
                     </View>
- 
+
                     {/* Loan Card */}
                     <View style={styles.summaryCard}>
                         <ThemedText style={styles.cardTitle}>{displayDuration}-Month Loan</ThemedText>
                         <View style={[styles.badge, financingRisk.toUpperCase() === 'SAFE' ? styles.badgeSafe : styles.badgeTight]}>
-                            <Ionicons 
-                                name={financingRisk.toUpperCase() === 'SAFE' ? "checkmark-circle-outline" : "alert-circle-outline"} 
-                                size={12} 
-                                color={financingRisk.toUpperCase() === 'SAFE' ? palette.status.success : palette.status.warning} 
-                                style={{ marginRight: 4 }} 
+                            <Ionicons
+                                name={financingRisk.toUpperCase() === 'SAFE' ? "checkmark-circle-outline" : "alert-circle-outline"}
+                                size={12}
+                                color={financingRisk.toUpperCase() === 'SAFE' ? palette.status.success : palette.status.warning}
+                                style={{ marginRight: 4 }}
                             />
                             <Text style={financingRisk.toUpperCase() === 'SAFE' ? styles.badgeTextSafe : styles.badgeTextTight}>{financingRisk}</Text>
                         </View>
@@ -132,7 +133,7 @@ export default function PaymentComparisonScreen() {
 
                     <ComparisonRow
                         label="Recovery Time"
-                        val1={`${fullRecovery}mo`}
+                   val1="$0"
                         val2={`${financingRecovery}mo`}
                         val1Color={fullRecovery > 6 ? palette.status.warning : palette.status.success}
                         val2Color={palette.neutral.gray900}
@@ -141,7 +142,7 @@ export default function PaymentComparisonScreen() {
                     <ComparisonRow
                         label="Total Cost"
                         val1={`$${displayAmount.toLocaleString()}`}
-                        val2={`$${totalLoanCost.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`}
+                        val2={`$${totalLoanCost.toLocaleString()}`}
                         val1Color={palette.status.success}
                         val2Color={palette.neutral.gray900}
                     />
@@ -173,8 +174,15 @@ export default function PaymentComparisonScreen() {
             {/* Footer Buttons */}
             <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.sm }]}>
                 <Button
-                    label="Explore Financing Options"
-                    onPress={() => { }}
+                    label="View AI Guidance"
+                    variant="primary"
+                    onPress={() => router.push({
+                        pathname: '/simulation/guidance',
+                        params: {
+                            ...params,
+                            amount: displayAmount.toString(),
+                        }
+                    })}
                     style={styles.primaryButton}
                     textStyle={styles.primaryButtonText}
                 />

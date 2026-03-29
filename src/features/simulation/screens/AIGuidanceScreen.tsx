@@ -16,10 +16,12 @@ export default function AIGuidanceScreen() {
     const params = useLocalSearchParams();
     const insets = useSafeAreaInsets();
 
-    const { simulation: simData } = useSelector((state: RootState) => state.simulation);
+    const { simulation: simData, history } = useSelector((state: RootState) => state.simulation);
+    const currentSim = simData || history?.[0];
 
     const amount = parseFloat(params.amount as string) || 0;
-
+    const displayAmount = currentSim?.requestPayload?.purchaseAmount || amount;
+        
     // Fallback to local logic if no backend data
     let fallbackStatus: 'safe' | 'tight' | 'risky' = 'safe';
     const paymentMethod = params.paymentMethod as string;
@@ -34,7 +36,7 @@ export default function AIGuidanceScreen() {
     }
 
     // Combine backend and fallback config
-    const aiGuidance = simData?.aiResponse?.ai_guidance;
+    const aiGuidance = currentSim?.aiResponse?.ai_guidance;
     const riskLevel = aiGuidance?.risk_level || fallbackStatus.toUpperCase();
 
     let themeColor: string = palette.status.success;
@@ -111,7 +113,7 @@ export default function AIGuidanceScreen() {
                         <ThemedText style={styles.statusTitle}>
                             {content.title} {content.emoji}
                         </ThemedText>
-                        <ThemedText style={styles.purchaseLabel}>Purchase: ${amount.toLocaleString()}</ThemedText>
+                        <ThemedText style={styles.purchaseLabel}>Purchase: ${displayAmount.toLocaleString()}</ThemedText>
                     </View>
                 </View>
             </View>
