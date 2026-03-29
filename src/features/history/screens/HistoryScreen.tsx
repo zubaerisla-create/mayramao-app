@@ -6,11 +6,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { palette, radius, spacing } from '@/src/design-system';
 
-import { getUserSimulation, setCurrentSimulation } from '@/src/features/simulation/simulationSlice';
 import { getProfile } from '@/src/features/profile/profileSlice';
-import { useRouter } from 'expo-router';
+import { getUserSimulation, setCurrentSimulation } from '@/src/features/simulation/simulationSlice';
 import { useAppDispatch, useAppSelector } from '@/src/store/hooks';
 import { format, isToday, isYesterday, parseISO } from 'date-fns';
+import { useRouter } from 'expo-router';
 
 const formatPaymentType = (type: string, duration: number) => {
     if (type?.toLowerCase() === 'loan' || type?.toLowerCase() === 'financing') {
@@ -33,7 +33,7 @@ const groupHistoryData = (historyData: any[], profilePlanName: string) => {
         if (riskLevel === 'RISKY') status = 'risky';
         else if (riskLevel === 'CAUTIOUS' || riskLevel === 'TIGHT') status = 'tight';
         else if (riskLevel === 'SAFE' || riskLevel === 'COMFORTABLE') status = 'safe';
- 
+
         const calc = item?.aiResponse?.calculation || {};
         const payload = item?.requestPayload || {};
         const displayAmount = payload?.purchaseAmount || 0;
@@ -82,11 +82,11 @@ const HistoryItem = ({ item, onPress }: { item: any; onPress: () => void }) => {
                     <ThemedText style={styles.itemTime}>{item.date}</ThemedText>
                 </View>
                 <View style={[styles.badge, { backgroundColor: item.status === 'safe' ? palette.pastel.green : '#FFF8E1' }]}>
-                    <Ionicons 
-                        name={item.status === 'safe' ? "checkmark-circle" : item.status === 'tight' ? "time" : "alert-circle"} 
-                        size={14} 
-                        color={item.status === 'safe' ? palette.status.success : item.status === 'tight' ? palette.status.warning : palette.status.error} 
-                        style={{ marginRight: 4 }} 
+                    <Ionicons
+                        name={item.status === 'safe' ? "checkmark-circle" : item.status === 'tight' ? "time" : "alert-circle"}
+                        size={14}
+                        color={item.status === 'safe' ? palette.status.success : item.status === 'tight' ? palette.status.warning : palette.status.error}
+                        style={{ marginRight: 4 }}
                     />
                     <ThemedText style={[styles.badgeText, { color: item.status === 'safe' ? palette.status.success : item.status === 'tight' ? palette.status.warning : palette.status.error }]}>
                         {item.status.charAt(0).toUpperCase() + item.status.slice(1)}

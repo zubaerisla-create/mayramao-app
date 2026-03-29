@@ -7,12 +7,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { Button, Input, SimulationLimitModal } from '@/src/components';
 import { palette, radius, spacing, typography } from '@/src/design-system';
-import { updateProfile } from '@/src/features/profile/profileSlice';
+import { updateProfile, savePurchaseSimulation } from '@/src/features/profile/profileSlice';
 import { AppDispatch, RootState } from '@/src/store/store';
 import { Ionicons } from '@expo/vector-icons';
+import { useEffect } from 'react';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useDispatch, useSelector } from 'react-redux';
-import { useEffect } from 'react';
+import { createSimulation, clearSimulationState } from '@/src/features/simulation/simulationSlice';
 
 export default function SimulationInputScreen() {
     const router = useRouter();
@@ -35,7 +36,7 @@ export default function SimulationInputScreen() {
     // Debounce planName update
     useEffect(() => {
         if (!name.trim()) return;
-        
+
         const timer = setTimeout(() => {
             dispatch(updateProfile({ planName: name }));
         }, 1000); // 1 second debounce
@@ -75,7 +76,6 @@ export default function SimulationInputScreen() {
         }
 
         const simPayload = {
-            userId: userId, // Added userId to payload
             purchaseAmount: principal,
             paymentType: paymentMethod === 'finance' ? 'Financing' : 'PayInFull',
             loanDuration: paymentMethod === 'finance' ? duration : 0,
@@ -83,8 +83,19 @@ export default function SimulationInputScreen() {
         };
 
         try {
-            await dispatch(updateProfile({ planName: name, purchaseSimulation: simPayload })).unwrap();
-            // Pass data to results
+            dispatch(clearSimulationState());
+
+            // Step 1: Update Profile with planName (PATCH)
+            console.log("Step 1: Updating planName (PATCH)...");
+            await dispatch(updateProfile({ planName: name })).unwrap();
+
+            // Step 2: Save Purchase Simulation payload (POST)
+            console.log("Step 2: Saving purchaseSimulation (POST)...");
+            await dispatch(savePurchaseSimulation({ purchaseSimulation: simPayload })).unwrap();
+
+            // Step 3: Navigate to results. 
+            // The SimulationResultScreen will then trigger Step 3 (POST /simulations)
+            // with a "good animated loading" UI.
             router.push({
                 pathname: '/simulation/result',
                 params: {

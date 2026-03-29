@@ -3,7 +3,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import React, { useEffect } from 'react';
 import { ActivityIndicator, Dimensions, ScrollView, StyleSheet, View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated, { 
+    FadeInDown, 
+    useSharedValue, 
+    withRepeat, 
+    withSequence, 
+    withTiming, 
+    useAnimatedStyle 
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, G, Line, Path, Text as SvgText } from 'react-native-svg';
 import { useDispatch, useSelector } from 'react-redux';
@@ -11,8 +18,8 @@ import { useDispatch, useSelector } from 'react-redux';
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/src/components';
 import { palette, radius, spacing, typography } from '@/src/design-system';
-import AnimatedStatusCircle from './AnimatedStatusCircle';
 import { createSimulation } from '../simulationSlice';
+import AnimatedStatusCircle from './AnimatedStatusCircle';
 
 const { width } = Dimensions.get('window');
 
@@ -64,34 +71,25 @@ export default function SimulationResultScreen() {
         // Only run if we don't have simulation data yet or it's for a different user/amount
         const shouldRun = userId && amount > 0 && (!simData || simData.userId !== userId || simData.requestPayload?.purchaseAmount !== amount);
 
-        if (shouldRun && !loading) {
+        if (shouldRun && !loading && !simData) {
             const simulationPayload = {
                 userId: userId
             };
-            
-            console.log("Calling createSimulation with payload:", simulationPayload);
+
+            console.log("Calling createSimulation recovery with userId:", userId);
             dispatch(createSimulation(simulationPayload));
         } else if (!userId && !loading) {
             console.error("No user ID found. Please login first.");
         }
     }, [dispatch, user?.id, (user as any)?._id, amount, isHistory, simData, loading]);
 
-    if (error) {
-        return (
-            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-                <ThemedText style={{ color: palette.status.error, marginBottom: 16 }}>Error: {error}</ThemedText>
-                <Button label="Try Again" onPress={() => router.back()} />
-            </View>
-        );
-    }
-
     // Extract data from backend response
     const aiResponse = simData?.aiResponse;
     const calc = aiResponse?.calculation || {};
     const aiGuidance = aiResponse?.ai_guidance || {};
-    
+
     // Get values from the calculation
-    const monthlyPaymentFromApi = calc?.monthly_payment || 
+    const monthlyPaymentFromApi = calc?.monthly_payment ||
         (isHistory ? simData?.requestPayload?.monthlyPayment : monthlyPayment) || 0;
 
     // Update updatedDisposable when data is received
@@ -101,8 +99,56 @@ export default function SimulationResultScreen() {
         }
     }, [simData, loading, currentDisposable, monthlyPaymentFromApi]);
 
-    if (loading) {
-        // Show partial UI during loading as per instructions
+    if (error) {
+        return (
+            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', padding: 20 }]}>
+                <Ionicons name="alert-circle-outline" size={48} color={palette.status.error} />
+                <ThemedText style={{ color: palette.status.error, marginVertical: 16, textAlign: 'center' }}>
+                    Error: {error}
+                </ThemedText>
+                <Button label="Go Back" onPress={() => router.back()} style={{ width: '100%' }} />
+            </View>
+        );
+    }
+
+    if (loading && !simData) {
+        return (
+            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', backgroundColor: palette.neutral.white }]}>
+                <View style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, opacity: 0.05, justifyContent: 'center', alignItems: 'center' }}>
+                    <Ionicons name="analytics" size={400} color={palette.brand.primary} />
+                </View>
+                
+                <AnimatedStatusCircle size={160} color={palette.brand.primary} bgColor={palette.brand.primary + '15'} />
+                
+                <View style={{ marginTop: 60, alignItems: 'center', paddingHorizontal: 40 }}>
+                    <Animated.Text 
+                        entering={FadeInDown.delay(200).springify()}
+                        style={{ fontSize: 24, fontWeight: '800', color: palette.neutral.gray900, marginBottom: 12 }}
+                    >
+                        Analyzing Results
+                    </Animated.Text>
+                    
+                    <Animated.Text 
+                        entering={FadeInDown.delay(400).springify()}
+                        style={{ textAlign: 'center', color: palette.neutral.gray500, fontSize: 16, lineHeight: 24, marginBottom: 40 }}
+                    >
+                        Our AI engine is calculating the long-term impact on your financial health.
+                    </Animated.Text>
+                    
+                    <View style={{ flexDirection: 'row', gap: 12 }}>
+                        {[0, 1, 2].map((i) => (
+                            <LoadingDot key={i} delay={i * 150} />
+                        ))}
+                    </View>
+                </View>
+
+                <View style={{ position: 'absolute', bottom: 60, width: '100%', paddingHorizontal: 40 }}>
+                    <ThemedText style={{ textAlign: 'center', color: palette.neutral.gray400, fontSize: 12, textTransform: 'uppercase', letterSpacing: 1 }}>
+                        Step 3/3 • Simulation Engine
+                    </ThemedText>
+                </View>
+            </View>
+        );
     }
 
     if (!simData && !loading) {
@@ -112,10 +158,10 @@ export default function SimulationResultScreen() {
                 <ThemedText style={{ marginTop: 16, textAlign: 'center' }}>
                     Unable to load simulation data. Please try again.
                 </ThemedText>
-                <Button 
-                    label="Back to Input" 
-                    onPress={() => router.back()} 
-                    style={{ marginTop: 24, width: '100%' }} 
+                <Button
+                    label="Back to Input"
+                    onPress={() => router.back()}
+                    style={{ marginTop: 24, width: '100%' }}
                 />
             </View>
         );
@@ -125,18 +171,18 @@ export default function SimulationResultScreen() {
     const displayAmount = isHistory ? (simData?.requestPayload?.purchaseAmount || amount) : amount;
     const displayMethod = isHistory ? (simData?.requestPayload?.paymentType?.toLowerCase().includes('finance') ? 'finance' : 'full') : paymentMethod;
     const displayDuration = isHistory ? (simData?.requestPayload?.loanDuration || duration) : duration;
-    
+
     // Risk Logic mapped to local status type
     let status: 'safe' | 'tight' | 'risky' = 'safe';
     const riskLevel = calc?.risk_level || aiGuidance?.risk_level;
-    
+
     if (riskLevel === 'RISKY') status = 'risky';
     else if (riskLevel === 'CAUTIOUS' || riskLevel === 'TIGHT') status = 'tight';
     else if (riskLevel === 'SAFE' || riskLevel === 'COMFORTABLE') status = 'safe';
 
     // Colors & Text
     const statusColor = status === 'safe' ? palette.status.success : status === 'tight' ? palette.status.warning : palette.status.error;
-    const disposableIncomeValue = calc?.baseline_disposable_income || currentDisposable;
+    const disposableIncomeValue = calc?.baseline_disposable_income || currentDisposable || 0;
     const statusBg = status === 'safe' ? palette.pastel.green : status === 'tight' ? '#FFF8E1' : '#FFEBEE';
     const statusText = status === 'safe' ? 'Safe' : status === 'tight' ? 'Tight' : 'Risky';
     const statusDesc = aiGuidance.guidance ||
@@ -189,7 +235,7 @@ export default function SimulationResultScreen() {
 
                 {/* Metrics */}
                 <Animated.View entering={FadeInDown.delay(300).springify()} style={{ flexDirection: 'column', gap: spacing.md, width: '100%' }}>
-                    
+
                     {/* Monthly Disposable Income Card - Highlighted for UX */}
                     <View style={[styles.card, styles.highlightCard]}>
                         <View style={styles.cardHeaderRow}>
@@ -412,12 +458,12 @@ export default function SimulationResultScreen() {
                             <Ionicons name="bulb-outline" size={18} color={palette.brand.secondary} />
                             <ThemedText style={styles.sectionTitle}>Key Insights</ThemedText>
                         </View>
-                        {keyInsights.map((insight: any, index: number) => (
+                        {Array.isArray(keyInsights) && keyInsights.map((insight: any, index: number) => (
                             <View key={index} style={styles.insightItem}>
                                 <Ionicons name="checkmark-circle" size={16} color={palette.brand.primary} style={styles.insightIcon} />
                                 <View style={styles.insightContent}>
-                                    <ThemedText style={styles.insightTitle}>{insight.title}</ThemedText>
-                                    <ThemedText style={styles.insightDetail}>{insight.detail}</ThemedText>
+                                    <ThemedText style={styles.insightTitle}>{insight?.title || 'Insight'}</ThemedText>
+                                    <ThemedText style={styles.insightDetail}>{insight?.detail || ''}</ThemedText>
                                 </View>
                             </View>
                         ))}
@@ -431,10 +477,10 @@ export default function SimulationResultScreen() {
                             <Ionicons name="shield-outline" size={18} color={palette.status.warning} />
                             <ThemedText style={styles.sectionTitle}>Safer Alternatives</ThemedText>
                         </View>
-                        {saferAlternatives.map((alternative: string, index: number) => (
+                        {Array.isArray(saferAlternatives) && saferAlternatives.map((alternative: string, index: number) => (
                             <View key={index} style={styles.alternativeItem}>
                                 <Ionicons name="arrow-forward" size={14} color={palette.neutral.gray600} style={styles.alternativeIcon} />
-                                <ThemedText style={styles.alternativeText}>{alternative}</ThemedText>
+                                <ThemedText style={styles.alternativeText}>{String(alternative)}</ThemedText>
                             </View>
                         ))}
                     </Animated.View>
@@ -450,13 +496,13 @@ export default function SimulationResultScreen() {
                         variant="primary"
                         style={{ flex: 1, backgroundColor: palette.brand.primary }}
                         leftIcon={<Ionicons name="bulb-outline" size={20} color="white" />}
-                        onPress={() => router.push({ 
-                            pathname: '/simulation/guidance', 
-                            params: { 
+                        onPress={() => router.push({
+                            pathname: '/simulation/guidance',
+                            params: {
                                 guidance: aiGuidance.guidance,
                                 insights: JSON.stringify(keyInsights),
                                 alternatives: JSON.stringify(saferAlternatives)
-                            } 
+                            }
                         })}
                     />
                     <View style={{ width: spacing.md }} />
@@ -733,3 +779,35 @@ const styles = StyleSheet.create({
         lineHeight: 18,
     },
 });
+
+function LoadingDot({ delay }: { delay: number }) {
+    const opacity = useSharedValue(0.3);
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            opacity.value = withRepeat(
+                withSequence(
+                    withTiming(1, { duration: 600 }),
+                    withTiming(0.3, { duration: 600 })
+                ),
+                -1,
+                true
+            );
+        }, delay);
+        return () => clearTimeout(timer);
+    }, [delay, opacity]);
+
+    const animatedStyle = useAnimatedStyle(() => ({
+        opacity: opacity.value,
+        transform: [{ scale: 0.8 + 0.2 * opacity.value }]
+    }));
+
+    return (
+        <Animated.View 
+            style={[
+                { width: 10, height: 10, borderRadius: 5, backgroundColor: palette.brand.primary },
+                animatedStyle
+            ]} 
+        />
+    );
+}

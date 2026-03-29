@@ -11,11 +11,10 @@ import { DecisionStatsCard } from '../components/DecisionStatsCard';
 import { FinancialOverviewCard } from '../components/FinancialOverviewCard';
 import { SimulationItemCard } from '../components/SimulationItemCard';
 
+import { SimulationLimitModal } from '@/src/components';
 import { getUserSimulation, setCurrentSimulation } from '@/src/features/simulation/simulationSlice';
-import { fetchCurrentSubscription } from '@/src/features/subscription/subscriptionSlice';
 import { useAppDispatch, useAppSelector } from '@/src/store/hooks';
 import { formatDistanceToNow, parseISO } from 'date-fns';
-import { SimulationLimitModal } from '@/src/components';
 
 export default function HomeScreen() {
     const router = useRouter();
@@ -186,11 +185,11 @@ export default function HomeScreen() {
                     </TouchableOpacity>
                 </View>
 
-                <SimulationLimitModal 
-                    visible={showLimitModal} 
+                <SimulationLimitModal
+                    visible={showLimitModal}
                     limit={MAX_SIMULATIONS}
-                    onClose={() => setShowLimitModal(false)} 
-                    onSubscribe={handleSubscribe} 
+                    onClose={() => setShowLimitModal(false)}
+                    onSubscribe={handleSubscribe}
                 />
 
                 {/* Recent Simulations */}

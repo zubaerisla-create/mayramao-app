@@ -124,7 +124,7 @@ export const submitContact = createAsyncThunk(
     }
 );
 
-// 5. Update Preferences (POST /api/v1/users/profile) // Note: The prompt mentioned POST for this, though often it's PATCH.
+// 5. Update Preferences (POST /api/v1/users/profile)
 export const updatePreferences = createAsyncThunk(
     "profile/updatePreferences",
     async (payload: any, { getState, rejectWithValue }) => {
@@ -133,6 +133,27 @@ export const updatePreferences = createAsyncThunk(
             const headers = { ...getAuthHeaders(state), "Content-Type": "application/json" };
             const response = await fetch(`${API_URL}/users/profile`, {
                 method: "POST", // according to user prompt "personal preferences post api"
+                headers,
+                body: JSON.stringify(payload),
+            });
+            const data = await response.json();
+            if (!response.ok) return rejectWithValue(data);
+            return data;
+        } catch (err: any) {
+            return rejectWithValue({ message: err.message || "Network error" });
+        }
+    }
+);
+
+// 6. Save Purchase Simulation (POST /api/v1/users/profile)
+export const savePurchaseSimulation = createAsyncThunk(
+    "profile/savePurchaseSimulation",
+    async (payload: { purchaseSimulation: any }, { getState, rejectWithValue }) => {
+        try {
+            const state = getState();
+            const headers = { ...getAuthHeaders(state), "Content-Type": "application/json" };
+            const response = await fetch(`${API_URL}/users/profile`, {
+                method: "POST",
                 headers,
                 body: JSON.stringify(payload),
             });
@@ -214,6 +235,19 @@ const profileSlice = createSlice({
             }
         });
         builder.addCase(updatePreferences.rejected, (state, action) => {
+            state.loading = false;
+            state.error = (action.payload as any)?.message || action.error?.message || "Something went wrong";
+        });
+
+        // savePurchaseSimulation
+        builder.addCase(savePurchaseSimulation.pending, (state) => { state.loading = true; state.error = null; });
+        builder.addCase(savePurchaseSimulation.fulfilled, (state, action) => {
+            state.loading = false;
+            if (action.payload?.profile) {
+                state.profile = action.payload.profile;
+            }
+        });
+        builder.addCase(savePurchaseSimulation.rejected, (state, action) => {
             state.loading = false;
             state.error = (action.payload as any)?.message || action.error?.message || "Something went wrong";
         });
