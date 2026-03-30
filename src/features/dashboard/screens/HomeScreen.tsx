@@ -91,9 +91,10 @@ export default function HomeScreen() {
     // Dynamic Greeting String
     const getGreeting = () => {
         const hour = new Date().getHours();
-        if (hour < 12) return 'Good morning,';
-        if (hour < 18) return 'Good afternoon,';
-        return 'Good evening,';
+        if (hour >= 5 && hour < 12) return 'Good morning,';
+        if (hour >= 12 && hour < 17) return 'Good afternoon,';
+        if (hour >= 17 && hour < 21) return 'Good evening,';
+        return 'Good night,';
     };
 
     const displayAvatar = profile?.profileImage || 'https://i.pravatar.cc/150?u=placeholder';
@@ -107,7 +108,12 @@ export default function HomeScreen() {
             : 0) as number;
         const variable = Number(profile.variableExpenses) || 0;
         const loans = (Number(profile.existingLoans) || Number(profile.totalMonthlyLoanPayments) || 0) as number;
-        return income - fixed - variable - loans;
+        
+        // Total obligations (Fixed Expenses + Loans + Variable Expenses)
+        const totalObligations = fixed + loans + variable;
+        
+        // Monthly Disposable Income
+        return income - totalObligations;
     }, [profile]);
 
     const stats = React.useMemo(() => {

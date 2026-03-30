@@ -36,7 +36,7 @@ export default function ProfileScreen() {
 
     const displayName = profile?.fullName || user?.name || 'User';
     const displayAvatar = profile?.profileImage || 'https://i.pravatar.cc/150?u=placeholder';
-    const planName = profile?.subscription?.planName || profile?.planName || 'Free Plan';
+    const planName = profile?.subscription?.planName || 'Free Plan';
 
     const income = profile?.monthlyIncome || 0;
     const existingLoans = profile?.existingLoans || 0;
