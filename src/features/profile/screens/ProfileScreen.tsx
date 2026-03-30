@@ -49,6 +49,9 @@ export default function ProfileScreen() {
     return (
 
         <View style={{ flex: 1 }}>
+
+
+            {/* header */}
             <View style={styles.header}>
                 <Image source={{ uri: displayAvatar }} style={styles.avatar} />
                 <View style={styles.userInfo}>
@@ -208,10 +211,10 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: spacing.xl,
-        paddingTop: spacing.xl, // Added top padding for status bar area matching
+        paddingTop: spacing.xl *2, // Added top padding for status bar area matching
         paddingBottom: spacing.xl,
         backgroundColor: palette.brand.primary,
-
+        
     },
     avatar: {
         width: 56,
@@ -369,7 +372,7 @@ const styles = StyleSheet.create({
         borderRadius: radius.md,
         borderWidth: 1,
         borderColor: palette.status.error, // Red border
-        marginBottom: 100,
+        marginBottom: 10,
     },
     logoutText: {
         ...typography.bodyMedium,

@@ -105,7 +105,7 @@ function GoalsList({ goals, onAddPress, onAddMock }: any) {
             <View style={styles.emptyStateContainer}>
                 <Animated.View entering={ZoomIn.delay(300).springify()} style={styles.iconContainer}>
                     <View style={styles.circleOuter}>
-                        <View style={styles.circleInner}>
+                        <View style={styles.circleInner}>  
                             <Ionicons name="radio-button-on" size={32} color={palette.neutral.gray400} />
                         </View>
                     </View>
@@ -138,7 +138,9 @@ function GoalsList({ goals, onAddPress, onAddMock }: any) {
                 <View key={index} style={styles.goalCard}>
                     <View style={styles.goalHeader}>
                         <ThemedText style={styles.goalName}>{goal.planName || goal.name}</ThemedText>
-                        <Ionicons name="ellipsis-vertical" size={20} color={palette.neutral.gray500} />
+                        <TouchableOpacity onPress={onAddPress} style={{ padding: 4 }}>
+                            <Ionicons name="ellipsis-vertical" size={20} color={palette.neutral.gray500} />
+                        </TouchableOpacity>
                     </View>
                     <ThemedText style={styles.goalAmount}>${(goal.targetAmount || goal.amount || 0).toLocaleString()}</ThemedText>
                     <View style={styles.goalDateRow}>
@@ -147,10 +149,7 @@ function GoalsList({ goals, onAddPress, onAddMock }: any) {
                     </View>
                     {goal.description ? <ThemedText style={styles.goalDesc}>{goal.description}</ThemedText> : null}
 
-                    <View style={styles.statusBox}>
-                        <ThemedText style={styles.statusLabel}>Required monthly saving</ThemedText>
-                        <ThemedText style={styles.statusValue}>${goal.monthly || 0}</ThemedText>
-                    </View>
+    
                 </View>
             ))}
             <Button

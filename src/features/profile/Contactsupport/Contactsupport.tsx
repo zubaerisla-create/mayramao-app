@@ -128,6 +128,8 @@ class AnimatedField extends Component<AnimatedInputProps> {
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 interface ContactSupportProps {
+    initialProfile?: any;
+    user?: any;
     onSubmit: (payload: { fullName: string; email: string; description: string }) => Promise<void>;
     loading: boolean;
 }
@@ -150,9 +152,10 @@ class ContactSupportInner extends Component<ContactSupportProps, ContactState> {
 
     constructor(props: ContactSupportProps) {
         super(props);
+        const { initialProfile, user } = props;
         this.state = {
-            fullName: '',
-            email: '',
+            fullName: initialProfile?.fullName || user?.name || '',
+            email: initialProfile?.email || user?.email || '',
             description: '',
             sending: false,
             sent: false,
@@ -395,8 +398,8 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF',
     },
     statusBar: {
-        height: 26,
-        backgroundColor: '#070000',
+        height: 44,
+        backgroundColor: '#FFFFFF',
     },
 
     // ── Header ───────────────────────────────────────────────────────────────
@@ -522,7 +525,8 @@ const styles = StyleSheet.create({
 
 export default function ContactSupport() {
     const dispatch = useDispatch<AppDispatch>();
-    const { loading } = useSelector((state: RootState) => state.profile);
+    const { profile, loading } = useSelector((state: RootState) => state.profile);
+    const { user } = useSelector((state: RootState) => state.auth);
 
     const handleSubmit = async (payload: { fullName: string; email: string; description: string }) => {
         await dispatch(submitContact(payload)).unwrap();
@@ -530,6 +534,8 @@ export default function ContactSupport() {
 
     return (
         <ContactSupportInner
+            initialProfile={profile}
+            user={user}
             onSubmit={handleSubmit}
             loading={loading}
         />

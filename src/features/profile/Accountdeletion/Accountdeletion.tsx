@@ -344,8 +344,8 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF',
     },
     statusBar: {
-        height: 26,
-        backgroundColor: '#130202',
+        height: 44,
+        backgroundColor: '#FFFFFF',
     },
 
     // ── Header ───────────────────────────────────────────────────────────────
