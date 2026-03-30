@@ -3,6 +3,7 @@ import { updateProfile } from '@/src/features/profile/profileSlice';
 import { AppDispatch, RootState } from '@/src/store/store';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
 import React, { Component } from 'react';
 import {
@@ -39,6 +40,8 @@ interface EditProfileState {
     gender: string;
     photoUri: string | null;
     genderModalVisible: boolean;
+    showDatePicker: boolean;
+    dateObj: Date;
 }
 
 // ─── Animated Input Field ────────────────────────────────────────────────────
@@ -133,6 +136,7 @@ class AnimatedInput extends Component<AnimatedInputProps> {
 // ─── Main EditProfile Screen ──────────────────────────────────────────────────
 interface EditProfileProps {
     initialProfile: any;
+    user: any;
     onSave: (formData: FormData) => Promise<void>;
     loading: boolean;
 }
@@ -146,14 +150,18 @@ class EditProfileInner extends Component<EditProfileProps, EditProfileState> {
 
     constructor(props: EditProfileProps) {
         super(props);
-        const { initialProfile } = props;
+        const { initialProfile, user } = props;
+        const initialDateObj = initialProfile?.dateOfBirth ? new Date(initialProfile.dateOfBirth) : new Date();
+
         this.state = {
-            fullName: initialProfile?.fullName || '',
-            email: initialProfile?.email || '',
+            fullName: initialProfile?.fullName || user?.name || '',
+            email: initialProfile?.email || user?.email || '',
             dob: initialProfile?.dateOfBirth ? new Date(initialProfile.dateOfBirth).toLocaleDateString('en-GB') : '',
             gender: initialProfile?.gender || 'Male',
             photoUri: initialProfile?.profileImage || null,
             genderModalVisible: false,
+            showDatePicker: false,
+            dateObj: initialDateObj,
         };
     }
 
@@ -190,6 +198,17 @@ class EditProfileInner extends Component<EditProfileProps, EditProfileState> {
             useNativeDriver: true,
         }).start();
     }
+
+    // ── Date Picker ───────────────────────────────────────────────────────────
+    private onDateChange = (event: any, selectedDate?: Date) => {
+        this.setState({ showDatePicker: false });
+        if (selectedDate) {
+            this.setState({
+                dateObj: selectedDate,
+                dob: selectedDate.toLocaleDateString('en-GB')
+            });
+        }
+    };
 
     // ── Image Picker ──────────────────────────────────────────────────────────
     private pickImage = async (): Promise<void> => {
@@ -343,12 +362,23 @@ class EditProfileInner extends Component<EditProfileProps, EditProfileState> {
                             label="Date of Birth"
                             value={dob}
                             placeholder="DD/MM/YYYY"
+                            editable={false}
                             delay={350}
                             rightIcon={
                                 <Ionicons name="calendar-outline" size={20} color="#888" />
                             }
-                            onChangeText={(t) => this.setState({ dob: t })}
+                            onPressRight={() => this.setState({ showDatePicker: true })}
                         />
+
+                        {this.state.showDatePicker && (
+                            <DateTimePicker
+                                value={this.state.dateObj}
+                                mode="date"
+                                display="default"
+                                onChange={this.onDateChange}
+                                maximumDate={new Date()}
+                            />
+                        )}
 
                         {/* ── Gender Dropdown ── */}
                         <View style={styles.fieldGroup}>
@@ -656,6 +686,7 @@ export default function EditProfile() {
     const dispatch = useDispatch<AppDispatch>();
     const router = useRouter();
     const { profile, loading } = useSelector((state: RootState) => state.profile);
+    const { user } = useSelector((state: RootState) => state.auth);
 
     const handleSave = async (formData: FormData) => {
         try {
@@ -670,6 +701,7 @@ export default function EditProfile() {
     return (
         <EditProfileInner
             initialProfile={profile}
+            user={user}
             loading={loading}
             onSave={handleSave}
         />
