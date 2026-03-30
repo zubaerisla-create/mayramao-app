@@ -15,6 +15,7 @@ export default function SubscriptionScreen() {
     const dispatch = useAppDispatch();
     const { profile } = useAppSelector(state => state.profile);
     const { subscriptions, loading } = useAppSelector(state => state.subscription);
+    const { history } = useAppSelector(state => state.simulation);
 
     React.useEffect(() => {
         dispatch(fetchSubscriptions());
@@ -22,6 +23,13 @@ export default function SubscriptionScreen() {
 
     const userSub = profile?.subscription;
     const isPremium = userSub?.isActive && userSub?.planName?.toLowerCase().includes('premium');
+
+    
+ 
+    const simulationCount = history?.length || 0;
+    const planLimit = profile?.subscription?.isActive ? (profile?.subscription?.simulationsLimit || 0) : 0;
+    const MAX_SIMULATIONS = 5 + planLimit;
+    const remainingSimulations = Math.max(0, MAX_SIMULATIONS - simulationCount);
 
     return (
         <View style={styles.container}>
@@ -46,11 +54,11 @@ export default function SubscriptionScreen() {
                             <Ionicons name="flash" size={24} color="#FF9800" />
                         </View>
                         <View style={styles.statusContent}>
-                            <ThemedText style={styles.statusTitle}>Free Plan</ThemedText>
+                            <ThemedText style={styles.statusTitle}>Simulation Remains</ThemedText>
                             <ThemedText style={styles.statusText}>
-                                You have <ThemedText style={{ fontWeight: 'bold' }}>3</ThemedText> simulations remaining this month.
+                                You have <ThemedText style={{ fontWeight: 'bold' }}> {simulationCount}/{MAX_SIMULATIONS} </ThemedText> simulations used.
                             </ThemedText>
-                            <ThemedText style={styles.statusReset}>Resets on the 1st of each month</ThemedText>
+                           
                         </View>
                     </Animated.View>
 

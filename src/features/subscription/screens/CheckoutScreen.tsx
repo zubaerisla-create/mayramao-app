@@ -19,7 +19,7 @@ export default function CheckoutScreen() {
     const dispatch = useAppDispatch();
     const { selectedPlan, purchaseLoading, error: subError } = useAppSelector(state => state.subscription);
     const { user } = useAppSelector(state => state.auth);
-    const { createPaymentMethod } = useStripe();
+    const { createPaymentMethod, confirmPayment } = useStripe();
 
     const [form, setForm] = useState({
         name: user?.name || '',
@@ -37,51 +37,51 @@ export default function CheckoutScreen() {
     };
 
     const handlePurchase = async () => {
-        if (!form.name) {
-            Alert.alert("Error", "Please enter cardholder name.");
-            return;
-        }
+        if (!form.name || !selectedPlan) return Alert.alert("Error", "Enter cardholder name or select plan");
 
-        if (!selectedPlan) return;
-
-        // Generate real paymentMethodId using Stripe SDK
-        const { paymentMethod, error } = await createPaymentMethod({
+        // 1️⃣ Create PaymentMethod
+        const { paymentMethod, error: pmError } = await createPaymentMethod({
             paymentMethodType: 'Card',
             paymentMethodData: {
-                billingDetails: {
-                    name: form.name,
-                    email: user?.email,
-                },
+                billingDetails: { name: form.name, email: user?.email },
             },
         });
 
-        if (error) {
-            Alert.alert("Payment Error", error.message || "Failed to create payment method.");
-            return;
-        }
+        if (pmError) return Alert.alert("Payment Error", pmError.message);
 
+        // 2️⃣ Send PaymentMethod to backend to create subscription
         const resultAction = await dispatch(purchaseSubscription({
             planId: selectedPlan._id,
             paymentMethodId: paymentMethod.id,
-            cardHolderName: form.name
+            cardHolderName: form.name,
         }));
 
-        if (purchaseSubscription.fulfilled.match(resultAction)) {
-            // Refresh profile to get updated subscription status
-            const userId = user?.id || (user as any)?._id;
-            if (userId) {
-                dispatch(getProfile(userId));
-            }
-            
-            Alert.alert(
-                "Success!", 
-                "Your subscription has been activated successfully.",
-                [{ text: "Great", onPress: () => router.replace('/(tabs)' as any) }]
-            );
-        } else {
-            const errorMessage = (resultAction.payload as any)?.message || "Payment failed. Please try again.";
-            Alert.alert("Payment Failed", errorMessage);
+        if (!purchaseSubscription.fulfilled.match(resultAction)) {
+            return Alert.alert("Payment Failed", (resultAction.payload as any)?.message || "Failed");
         }
+
+        const { clientSecret } = resultAction.payload as any;
+        if (!clientSecret) return Alert.alert("Payment Error", "No client secret returned");
+
+        // 3️⃣ Confirm the payment intent on client
+        const { paymentIntent, error: stripeError } = await confirmPayment(clientSecret, {
+            paymentMethodType: 'Card',
+            paymentMethodData: {
+                billingDetails: { name: form.name, email: user?.email },
+            }
+        });
+
+        if (stripeError) return Alert.alert("Payment Failed", stripeError.message);
+        
+        // Fixed: Check payment intent status correctly
+        if (paymentIntent?.status !== 'Succeeded') {
+            return Alert.alert("Payment Failed", "Payment not successful");
+        }
+
+        // 4️⃣ Refresh profile to update subscription status
+        dispatch(getProfile(user?.id || (user as any)?._id || ''));
+
+        Alert.alert("Success", "Subscription activated", [{ text: "OK", onPress: () => router.replace('/(tabs)' as any) }]);
     };
 
     return (
