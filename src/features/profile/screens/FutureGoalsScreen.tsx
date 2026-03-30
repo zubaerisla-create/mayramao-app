@@ -5,6 +5,7 @@ import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TouchableOpacit
 import Animated, { FadeInDown, ZoomIn } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 import { ThemedText } from '@/components/themed-text';
 import { Button, Input } from '@/src/components';
@@ -169,6 +170,18 @@ function AddGoalForm({ initialGoal, onSave, loading }: any) {
         date: initialGoal?.targetDate || '',
         description: initialGoal?.description || '',
     });
+    const [showDatePicker, setShowDatePicker] = useState(false);
+    const [dateObj, setDateObj] = useState(
+        initialGoal?.targetDate ? new Date(initialGoal.targetDate) : new Date()
+    );
+
+    const handleDateChange = (event: any, selectedDate?: Date) => {
+        setShowDatePicker(false);
+        if (selectedDate) {
+            setDateObj(selectedDate);
+            setForm(prev => ({ ...prev, date: selectedDate.toISOString().split('T')[0] }));
+        }
+    };
 
     const handleChange = (key: string, value: string) => {
         setForm(prev => ({ ...prev, [key]: value }));
@@ -196,9 +209,22 @@ function AddGoalForm({ initialGoal, onSave, loading }: any) {
                         label="Target Date"
                         placeholder="yyyy-mm-dd"
                         value={form.date}
-                        onChangeText={(text: string) => handleChange('date', text)}
-                        rightIcon={<Ionicons name="calendar-outline" size={20} color={palette.neutral.gray500} />}
+                        editable={false}
+                        rightIcon={
+                            <TouchableOpacity onPress={() => setShowDatePicker(true)} style={{ padding: 4 }}>
+                                <Ionicons name="calendar-outline" size={20} color={palette.neutral.gray500} />
+                            </TouchableOpacity>
+                        }
                     />
+                    {showDatePicker && (
+                        <DateTimePicker
+                            value={dateObj}
+                            mode="date"
+                            display="default"
+                            onChange={handleDateChange}
+                            minimumDate={new Date()}
+                        />
+                    )}
                     <LabeledInput
                         label="Short Description (Optional)"
                         placeholder="Add a small note (optional)"
@@ -220,7 +246,7 @@ function AddGoalForm({ initialGoal, onSave, loading }: any) {
     );
 }
 
-function LabeledInput({ label, value, onChangeText, placeholder, keyboardType, rightIcon, leftIcon, multiline, style }: any) {
+function LabeledInput({ label, value, onChangeText, placeholder, keyboardType, rightIcon, leftIcon, multiline, style, editable }: any) {
     return (
         <View style={styles.inputWrapper}>
             <ThemedText style={styles.label}>{label}</ThemedText>
@@ -232,6 +258,7 @@ function LabeledInput({ label, value, onChangeText, placeholder, keyboardType, r
                 containerStyle={styles.noMargin}
                 style={[styles.input, style]}
                 rightIcon={rightIcon}
+                editable={editable}
             // leftIcon={leftIcon} // Input component might need adjustment for text leftIcon, simplistic for now
             />
         </View>
