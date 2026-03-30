@@ -42,7 +42,6 @@ export default function OnboardingScreen() {
     };
 
     const finishOnboarding = () => {
-        // Implement logic to save 'onboarding_seen' state
         router.push('/auth/create-account');
     };
 
@@ -51,6 +50,7 @@ export default function OnboardingScreen() {
     return (
         <SafeAreaView style={styles.container}>
             <StatusBar barStyle="dark-content" backgroundColor={palette.neutral.white} />
+
             <View style={styles.header}>
                 {!isLastSlide && (
                     <Button
@@ -58,7 +58,6 @@ export default function OnboardingScreen() {
                         variant="ghost"
                         size="sm"
                         onPress={finishOnboarding}
-                        style={styles.skipButton}
                     />
                 )}
             </View>
@@ -67,7 +66,9 @@ export default function OnboardingScreen() {
                 <Animated.FlatList
                     ref={flatListRef}
                     data={ONBOARDING_DATA}
-                    renderItem={({ item, index }) => <OnboardingItem item={item} index={index} x={scrollX} />}
+                    renderItem={({ item, index }) => (
+                        <OnboardingItem item={item} index={index} x={scrollX} />
+                    )}
                     keyExtractor={(item) => item.id}
                     horizontal
                     showsHorizontalScrollIndicator={false}
@@ -108,21 +109,16 @@ const styles = StyleSheet.create({
         alignItems: 'flex-end',
         paddingHorizontal: spacing.md,
     },
-    skipButton: {
-
-    },
     footer: {
-        flex: 1,
-        justifyContent: 'space-between',
         paddingHorizontal: spacing.xl,
-        paddingBottom: spacing.xxl,
+        paddingTop: spacing.md,
+        paddingBottom: spacing.lg,
     },
     buttonContainer: {
-        height: 100,
-        justifyContent: 'center',
+        marginTop: spacing.lg,
     },
     mainButton: {
         width: '100%',
-        backgroundColor: palette.brand.primary, // Dark navy
+        backgroundColor: palette.brand.primary,
     }
 });

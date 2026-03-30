@@ -28,7 +28,7 @@ export default function RootLayout() {
           publishableKey="pk_test_51PrOoOIB2fwnFU2Pxba0oZ6FFXeipWRUTDKtoYlY0GNAlGId8s9pfq3RKyyTXj4eiQchK2kojT99peyLp3ldumhG00WDiAf38v"
           merchantIdentifier="merchant.com.mayramao"
         >
-          <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+          <ThemeProvider value={DefaultTheme}>
             <Stack screenOptions={{ headerShown: false }}>
               <Stack.Screen name="index" />
               <Stack.Screen name="onboarding" />

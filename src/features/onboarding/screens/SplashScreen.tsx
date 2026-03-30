@@ -19,6 +19,8 @@ export default function SplashScreen() {
     const scale = useSharedValue(0);
     const opacity = useSharedValue(0);
     const { user, accessToken } = useAppSelector((state) => state.auth);
+    // Wait for redux-persist rehydration before making routing decisions
+    const rehydrated = useAppSelector((state) => (state as any)._persist?.rehydrated ?? true);
 
     useEffect(() => {
         scale.value = withSequence(
@@ -27,6 +29,10 @@ export default function SplashScreen() {
         );
 
         opacity.value = withDelay(100, withTiming(1, { duration: 600 }));
+    }, []);
+
+    useEffect(() => {
+        if (!rehydrated) return; // Wait until persist hydration is complete
 
         const timer = setTimeout(() => {
             if (user && accessToken) {
@@ -34,10 +40,10 @@ export default function SplashScreen() {
             } else {
                 router.replace('/onboarding');
             }
-        }, 3000);
+        }, 2500);
 
         return () => clearTimeout(timer);
-    }, [user, accessToken]);
+    }, [rehydrated, user, accessToken]);
 
     const animatedIconStyle = useAnimatedStyle(() => ({
         transform: [{ scale: scale.value }],

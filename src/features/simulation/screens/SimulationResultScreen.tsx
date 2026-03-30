@@ -541,7 +541,7 @@ export default function SimulationResultScreen() {
                     label="Save & Return to Home"
                     variant="primary"
                     style={{ marginTop: spacing.md, backgroundColor: palette.neutral.gray900 }}
-                    onPress={() => router.dismissAll()}
+                    onPress={() => router.replace('/(tabs)')}
                 />
             </View>
         </View>

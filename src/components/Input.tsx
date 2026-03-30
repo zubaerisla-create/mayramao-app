@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { palette, radius, spacing, typography } from '@/src/design-system';
 import React, { useState } from 'react';
 import {
@@ -6,6 +7,7 @@ import {
     Text,
     TextInput,
     TextInputProps,
+    TouchableOpacity,
     UIManager,
     View,
     ViewStyle
@@ -40,10 +42,14 @@ export function Input({
     onFocus,
     onBlur,
     style,
+    secureTextEntry,
     ...props
 }: InputProps) {
     const [isFocused, setIsFocused] = useState(false);
+    const [passwordVisible, setPasswordVisible] = useState(false);
     const borderColorValue = useSharedValue<string>(palette.neutral.gray200);
+
+    const isPasswordField = secureTextEntry === true;
 
     const handleFocus = (e: any) => {
         setIsFocused(true);
@@ -57,14 +63,26 @@ export function Input({
         onBlur?.(e);
     };
 
-    // If there is an error, force border color to error immediately, but we rely on effect or just render logic
-    // Reanimated style for border
     const animatedBorderStyles = useAnimatedStyle(() => {
         return {
             borderColor: error ? palette.status.error : borderColorValue.value,
             borderWidth: 1.5,
         };
     });
+
+    const eyeButton = isPasswordField ? (
+        <TouchableOpacity
+            onPress={() => setPasswordVisible((v) => !v)}
+            style={styles.eyeButton}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+            <Ionicons
+                name={passwordVisible ? 'eye-outline' : 'eye-off-outline'}
+                size={20}
+                color={palette.neutral.gray500}
+            />
+        </TouchableOpacity>
+    ) : null;
 
     return (
         <View style={[styles.container, containerStyle]}>
@@ -79,10 +97,12 @@ export function Input({
                     onFocus={handleFocus}
                     onBlur={handleBlur}
                     selectionColor={palette.brand.primary}
+                    secureTextEntry={isPasswordField && !passwordVisible}
                     {...props}
                 />
 
-                {rightIcon && <View style={styles.rightIcon}>{rightIcon}</View>}
+                {/* Show password eye toggle for password fields, or custom rightIcon otherwise */}
+                {isPasswordField ? eyeButton : rightIcon && <View style={styles.rightIcon}>{rightIcon}</View>}
             </Animated.View>
 
             {error && (
@@ -124,6 +144,12 @@ const styles = StyleSheet.create({
     },
     rightIcon: {
         marginLeft: spacing.sm,
+    },
+    eyeButton: {
+        paddingHorizontal: spacing.md,
+        paddingVertical: spacing.sm,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     errorText: {
         ...typography.caption,
