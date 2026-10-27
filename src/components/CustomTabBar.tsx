@@ -1,7 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { palette, spacing } from '@/src/design-system';
 import { Ionicons } from '@expo/vector-icons';
-import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import type { BottomTabBarProps } from 'expo-router/js-tabs';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import Animated, {
     useAnimatedStyle,

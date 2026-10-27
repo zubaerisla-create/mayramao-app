@@ -2,7 +2,7 @@ import {
   DarkTheme,
   DefaultTheme,
   ThemeProvider,
-} from "@react-navigation/native";
+} from "expo-router/react-navigation";
 import "react-native-reanimated";
 import { StripeProvider } from "@stripe/stripe-react-native";
 

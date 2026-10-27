@@ -29,7 +29,7 @@ export default function LoginScreen() {
   });
 
   const dispatch = useAppDispatch();
-  const { loading, error } = useAppSelector<RootState, AuthState>(
+  const { loading, error } = useAppSelector(
     (state) => state.auth,
   );
 

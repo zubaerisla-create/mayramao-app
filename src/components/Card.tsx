@@ -1,11 +1,11 @@
 import { palette, radius, shadows, spacing } from '@/src/design-system';
 import React from 'react';
-import { StyleSheet, ViewStyle } from 'react-native';
+import { StyleProp, StyleSheet, ViewStyle } from 'react-native';
 import { FadeInView } from './Animated/FadeInView';
 
 interface CardProps {
     children: React.ReactNode;
-    style?: ViewStyle;
+    style?: StyleProp<ViewStyle>;
     delay?: number;
     variant?: 'elevated' | 'outlined' | 'flat';
 }

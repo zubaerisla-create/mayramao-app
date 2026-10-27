@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { ViewStyle } from 'react-native';
+import { StyleProp, ViewStyle } from 'react-native';
 import Animated, {
     Easing,
     useAnimatedStyle,
@@ -10,7 +10,7 @@ import Animated, {
 
 interface FadeInViewProps {
     children: React.ReactNode;
-    style?: ViewStyle;
+    style?: StyleProp<ViewStyle>;
     delay?: number;
     duration?: number;
     direction?: 'up' | 'down' | 'none';
